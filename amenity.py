@@ -1,0 +1,196 @@
+from neo4j import GraphDatabase
+import overpy
+import json
+import argparse
+import os
+
+
+class App:
+    def __init__(self, uri, user, password):
+        self.driver = GraphDatabase.driver(uri, auth=(user, password))
+
+    def close(self):
+        self.driver.close()
+
+    def import_node(self):
+        with self.driver.session() as session:
+            result = session.write_transaction(self._import_node)
+            return result
+
+    @staticmethod
+    def _import_node(tx):
+        result = tx.run("""
+                        CALL apoc.load.json("nodefile.json") YIELD value AS value 
+                        WITH value.elements AS elements
+                        UNWIND elements AS nodo
+                        MERGE (n:PointOfInterest {osm_id: nodo.id})-[:MEMBER]->(wn:OSMWayNode {osm_id: nodo.id})
+                            ON CREATE SET n.name=nodo.tags.name,wn.lat=tofloat(nodo.lat), 
+                                wn.lon=tofloat(nodo.lon), 
+                                wn.location=point({latitude:tofloat(nodo.lat), longitude:tofloat(nodo.lon)})
+                        
+                        WITH n, nodo
+                        MERGE (n)-[:TAGS]->(t:Tag)
+                            ON CREATE SET t += nodo.tags
+                    """)
+        return result.values()
+
+    def import_way(self):
+        with self.driver.session() as session:
+            result = session.write_transaction(self._import_way)
+            return result
+
+    @staticmethod
+    def _import_way(tx):
+        result = tx.run("""
+                        CALL apoc.load.json("wayfile.json") YIELD value 
+                        UNWIND value.elements AS elements
+                        WITH [item IN elements WHERE elements.type = 'way'] AS ways,
+                            [item IN elements WHERE elements.type = 'node'] AS nodes
+                        FOREACH(node IN nodes | MERGE (n:OSMWayNode:Node {osm_id: node.id}) 
+                                ON CREATE SET n.lat = tofloat(node.lat), n.lon = tofloat(node.lon), 
+                                n.location = point({latitude: tofloat(node.lat), longitude: tofloat(node.lon)}))
+                        WITH ways
+                        UNWIND ways AS way
+                        MERGE (w:Way:PointOfInterest {osm_id: way.id}) ON CREATE SET w.name = way.tags.name
+                        MERGE (w)-[:TAGS]->(t:Tag) ON CREATE SET t += way.tags
+                        WITH w, way.nodes AS nodes
+                        UNWIND nodes AS node
+                        MATCH (wn:OSMWayNode {osm_id: node})
+                        MERGE (w)-[:MEMBER]->(wn)
+                    """)
+        return result.values()
+
+    def connect_amenity(self):
+        with self.driver.session() as session:
+            result = session.write_transaction(self._connect_amenity)
+
+    @staticmethod
+    def _connect_amenity(tx):
+        result = tx.run("""
+                        MATCH (p:OSMWayNode)
+                            WHERE NOT (p)-[:ROUTE]->()
+                        WITH p, p.location AS poi
+                        MATCH (n:Node)
+                            WHERE distance(n.location, poi) < 100
+                            AND n <> p
+                        WITH n, p, distance(n.location, poi) AS dist ORDER BY dist
+                        WITH head(collect(n)) AS nv, p
+                        MERGE (p)-[r:ROUTE]->(nv)
+                            ON CREATE SET r.distance = distance(nv.location, p.location), r.status = 'active'
+                        MERGE (p)<-[ri:ROUTE]-(nv)
+                            ON CREATE SET ri.distance = distance(nv.location, p.location), ri.status = 'active'
+                    """)
+
+
+def add_options():
+    parser = argparse.ArgumentParser(description='Creation of routing graph.')
+    parser.add_argument('--neo4jURL', '-n', dest='neo4jURL', type=str,
+                        help="""Insert the address of the local neo4j instance. For example: neo4j://localhost:7687""",
+                        required=True)
+    parser.add_argument('--neo4juser', '-u', dest='neo4juser', type=str,
+                        help="""Insert the name of the user of the local neo4j instance.""",
+                        required=True)
+    parser.add_argument('--neo4jpwd', '-p', dest='neo4jpwd', type=str,
+                        help="""Insert the password of the local neo4j instance.""",
+                        required=True)
+    parser.add_argument('--importDir', '-i', dest='neo4j_import', type=str,
+                        help="""Insert the path of the Neo4j import directory, where have to save the .json files.""",
+                        required=True)
+    parser.add_argument('--minLatitude', '-x', dest='min_lat', type=float,
+                        help="""Insert the minimum value of latitude to search for amenities""",
+                        required=True)
+    parser.add_argument('--minLongitude', '-y', dest='min_lon', type=float,
+                        help="""Insert the minimum value of longitude to search for amenities""",
+                        required=True)
+    parser.add_argument('--maxLatitude', '-z', dest='max_lat', type=float,
+                        help="""Insert the maximum value of latitude to search for amenities""",
+                        required=True)
+    parser.add_argument('--maxLongitude', '-k', dest='max_lon', type=float,
+                        help="""Insert the maximum value of longitude to search for amenities""",
+                        required=True)
+    return parser
+
+
+def main(args=None):
+    argParser = add_options()
+    options = argParser.parse_args(args=args)
+    api = overpy.Overpass()
+    minlat = options.min_lat
+    minlon = options.min_lon
+    maxlat = options.max_lat
+    maxlon = options.max_lon
+    result = api.query(f"""[out:json][bbox:{minlat}, {minlon}, {maxlat}, {maxlon}];
+                           (   
+                               node["amenity"="restaurant"];
+                               node["amenity"="bar"];
+                               node["amenity"="pub"];
+                               node["amenity"="school"];
+                               node["leisure"="park"];
+                           );
+                           out body;
+                           """)
+
+    list_node = []
+    for node in result.nodes:
+        d = {'type': 'node', 'id': node.id, 'lat': str(node.lat), 'lon': str(node.lon), 'tags': node.tags}
+        list_node.append(d)
+
+    res = {"elements": list_node}
+    print("nodes to import:")
+    print(res)
+    print("-----------------------------------------------------------------------")
+    path = os.path.join(options.neo4j_import, "nodefile.json")
+
+    with open(path, "w") as f:
+        json.dump(res, f)
+
+    api = overpy.Overpass()
+
+    result = api.query(f"""[out:json][bbox:{minlat}, {minlon}, {maxlat}, {maxlon}];
+                    (   
+                            way["amenity"="restaurant"];
+                            way["amenity"="bar"];
+                            way["amenity"="pub"];
+                            way["amenity"="school"];
+                            way["leisure"="park"];
+                    );
+                    (._;>;);
+                    out body;
+                    """)
+
+    list_way = []
+    for node in result.nodes:
+        d = {'type': 'node', 'id': node.id, 'lat': str(node.lat), 'lon': str(node.lon)}
+        list_way.append(d)
+
+    for way in result.ways:
+        d = {'type': 'way', 'id': way.id, 'tags': way.tags}
+        l_node = []
+        for node in way.nodes:
+            l_node.append(node.id)
+        d['nodes'] = l_node
+        list_way.append(d)
+
+    res = {"elements": list_way}
+
+    print("ways to import:")
+    print(res)
+
+    path = os.path.join(options.neo4j_import, "wayfile.json")
+
+    with open(path, "w") as f:
+        json.dump(res, f)
+
+    greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
+
+    greeter.import_node()
+    print("import nodefile.json: done")
+    greeter.import_way()
+    print("import wayfile.json: done")
+    greeter.connect_amenity()
+    greeter.close()
+
+    return 0
+
+
+main()
