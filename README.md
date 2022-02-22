@@ -7,7 +7,11 @@ In order to create the routing graph [Neo4j][1] must be installed on the local m
 
 [1]: https://neo4j.com/docs/operations-manual/current/installation/
 
-Install the Neo4j [Graph Data Science][2] and [APOC][3] libraries.
+Install the Neo4j [Graph Data Science][2] and [APOC][3] libraries plug-ins in your instance.
+Edit the settings of the graph DBMS created in your instance.
+Add this row of code after the decorator 'Other Neo4j system properties':
+
+apoc.import.file.enabled=true
 
 [2]: https://neo4j.com/docs/graph-data-science/current/installation/
 
