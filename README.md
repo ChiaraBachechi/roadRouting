@@ -17,6 +17,10 @@ apoc.import.file.enabled=true
 
 [3]: https://neo4j.com/labs/apoc/4.1/installation/
 
+Moreover, you will need to install [OSMnx][4] library for python.
+
+[4]: https://osmnx.readthedocs.io/en/stable/
+
 ***
 
 ## creation of graph
