@@ -74,13 +74,13 @@ def add_options():
                         help="""Insert distance (in meters) of the area to be cover""",
                         required=True)
     parser.add_argument('--neo4jURL', '-n', dest='neo4jURL', type=str,
-                        help=""Insert the address of the local neo4j instance. For example: neo4j://localhost:7687"",
+                        help="""Insert the address of the local neo4j instance. For example: neo4j://localhost:7687""",
                         required=True)
     parser.add_argument('--neo4juser', '-u', dest='neo4juser', type=str,
-                        help=""Insert the name of the user of the local neo4j instance."",
+                        help="""Insert the name of the user of the local neo4j instance.""",
                         required=True)
     parser.add_argument('--neo4jpwd', '-p', dest='neo4jpwd', type=str,
-                        help=""Insert the password of the local neo4j instance."",
+                        help="""Insert the password of the local neo4j instance.""",
                         required=True)
     parser.add_argument('--importDir', '-i', dest='neo4j_import', type=str,
                         help="""Insert the path of the Neo4j import directory, where have to save the .graphml file.""",
