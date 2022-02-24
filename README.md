@@ -7,11 +7,13 @@ In order to create the routing graph [Neo4j][1] must be installed on the local m
 
 [1]: https://neo4j.com/docs/operations-manual/current/installation/
 
-Install the Neo4j [Graph Data Science][2] and [APOC][3] libraries plug-ins in your instance.
+Install the Neo4j [Graph Data Science][2](at least version 1.6) and [APOC][3] libraries plug-ins in your instance.
 Edit the settings of the graph DBMS created in your instance.
 Add this row of code after the decorator 'Other Neo4j system properties':
 
 apoc.import.file.enabled=true
+
+You will need to upgrade your DBMS to version 4.2.6.
 
 [2]: https://neo4j.com/docs/graph-data-science/current/installation/
 
@@ -39,7 +41,6 @@ In this case Modena road network have been imported. The parameters passed repre
 - _n_ address of the local Neo4j instance 
 - _u_ user of the local Neo4j instance
 - _p_ password of the local Neo4j instance
-- _i_ path of the Neo4j import directory
 - _f_ name of the file where to save the graph with extention '.graphml'
 
 ### import point of interest
@@ -54,7 +55,6 @@ The parameters passed:
 - _n_ address of the local Neo4j instance 
 - _u_ user of the local Neo4j instance
 - _p_ password of the local Neo4j instance
-- _i_ path of the Neo4j import directory
 - _x_ and _y_ minimum value of latitude and longitude of the bbox that cover the geographic area from which to search the points of interest.
 - _z_ and _k_ maximum value of latitude and longitude of the bbox that cover the geographic area from which to search the points of interest.
 ***
