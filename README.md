@@ -31,7 +31,7 @@ Moreover, you will need to install [OSMnx][4] and [overpy][5] library for python
 Example of how to import nodes of the road network from OSM:
 
 ````shell command
-python graph.py -x 44.645885 -y 10.9255707 -d 9000 -n neo4j://localhost:7687 -u neo4j -p pwd -f modena.graphml
+python graph.py -x 44.645885 -y 10.9255707 -d 9000 -n neo4j://localhost:7687 -u neo4j -p passwd -f modena.graphml
 ````
 In this case Modena road network have been imported. The parameters passed represent:
 
@@ -49,7 +49,7 @@ In order to perform routing queries between two points of interest (POI) they mu
 
 Example of how to import POI from OSM for the city of Modena:
 ````shell
-python amenity.py -n neo4j://localhost:7687 -u neo4j -p pwd -x 44.622424 -y 10.884421 -z 44.667922 -k 10.964375
+python amenity.py -n neo4j://localhost:7687 -u neo4j -p passwd -x 44.622424 -y 10.884421 -z 44.667922 -k 10.964375
 ````
 The parameters passed:
 - _n_ address of the local Neo4j instance 
@@ -64,7 +64,7 @@ Information about traffic volumes can be included in the graph from a csv file f
 
 Example of how to import traffic from the file traffic.csv for the city of Modena:
 ````shell
-python traffic.py -n neo4j://localhost:7687 -u neo4j -p pwd -f C:\Users\user\Desktop\TESI\cavaletti\Updated\traffic.csv
+python traffic.py -n neo4j://localhost:7687 -u neo4j -p passwd -f C:\Users\user\Desktop\TESI\cavaletti\Updated\traffic.csv
 ````
 
 - _n_ address of the local Neo4j instance 
@@ -78,7 +78,7 @@ Routing between two points can be performed by running the following script. A m
 An example of how to use the script routing.py:
 
 ```` shell
-python routing.py -s 'La Baracchina' -d 'Michelangelo' -n neo4j://localhost:7687 -u neo4j -p pwd -x 44.645885 -y 10.9255707
+python routing.py -s 'La Baracchina' -d 'Michelangelo' -n neo4j://localhost:7687 -u neo4j -p passwd -x 44.645885 -y 10.9255707
 ````
 The parameters passed:
 
@@ -100,7 +100,7 @@ The user can also decide to close a street or to open it. This can be helpfult t
 An example of how to use the script routing.py:
 
 ```` shell
-python ChangeStreetStatus.py -s "Via Wiligelmo" -st "close" -n neo4j://localhost:7687 -u neo4j -p pwd
+python ChangeStreetStatus.py -s "Via Wiligelmo" -st "close" -n neo4j://localhost:7687 -u neo4j -p passwd
 ````
 The parameters passed:
 
