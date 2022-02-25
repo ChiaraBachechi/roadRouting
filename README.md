@@ -31,7 +31,7 @@ Moreover, you will need to install [OSMnx][4] and [overpy][5] library for python
 Example of how to import nodes of the road network from OSM:
 
 ````shell command
-python graph.py -x 44.645885 -y 10.9255707 -d 9000 -n neo4j://localhost:7687 -u neo4j -p userPassword -i .\neo4j\import -f modena.graphml
+python graph.py -x 44.645885 -y 10.9255707 -d 9000 -n neo4j://localhost:7687 -u neo4j -p pwd -f modena.graphml
 ````
 In this case Modena road network have been imported. The parameters passed represent:
 
@@ -41,7 +41,7 @@ In this case Modena road network have been imported. The parameters passed repre
 - _n_ address of the local Neo4j instance 
 - _u_ user of the local Neo4j instance
 - _p_ password of the local Neo4j instance
-- _f_ name of the file where to save the graph with extention '.graphml'
+- _f_ name of the file where to save the graph with extention '.graphml' (this file will be created by the script and automatically placed in the import folder of neo4j)
 
 ### import point of interest
 
@@ -49,7 +49,7 @@ In order to perform routing queries between two points of interest (POI) they mu
 
 Example of how to import POI from OSM for the city of Modena:
 ````shell
-python amenity.py -n neo4j://localhost:7687 -u neo4j -p userPassword -i .\neo4j\import -x 44.622424 -y 10.884421 -z 44.667922 -k 10.964375
+python amenity.py -n neo4j://localhost:7687 -u neo4j -p pwd -x 44.622424 -y 10.884421 -z 44.667922 -k 10.964375
 ````
 The parameters passed:
 - _n_ address of the local Neo4j instance 
@@ -58,13 +58,27 @@ The parameters passed:
 - _x_ and _y_ minimum value of latitude and longitude of the bbox that cover the geographic area from which to search the points of interest.
 - _z_ and _k_ maximum value of latitude and longitude of the bbox that cover the geographic area from which to search the points of interest.
 ***
+## Import traffic
+
+Information about traffic volumes can be included in the graph from a csv file formatted as the 'traffic.csv' file includeed in the folder.
+
+Example of how to import traffic from the file traffic.csv for the city of Modena:
+````shell
+python traffic.py -n neo4j://localhost:7687 -u neo4j -p pwd -f C:\Users\user\Desktop\TESI\cavaletti\Updated\traffic.csv
+````
+
+- _n_ address of the local Neo4j instance 
+- _u_ user of the local Neo4j instance
+- _p_ password of the local Neo4j instance
+- _f_ name of the csv file where traffic information between nodes are provided
+ 
 ## Routing
 Routing between two points can be performed by running the following script. A map with the calculated route highlighted is generated.
 
 An example of how to use the script routing.py:
 
 ```` shell
-python routing.py -s sourceName -d destinationName -n neo4j://localhost:7687 -u neo4j -p userPassword -x 44.645885 -y 10.9255707
+python routing.py -s 'La Baracchina' -d 'Michelangelo' -n neo4j://localhost:7687 -u neo4j -p pwd -x 44.645885 -y 10.9255707
 ````
 The parameters passed:
 
@@ -81,13 +95,18 @@ The routing based on traffic volume will selected the path whose edge in hte gra
 
 In order to perform the calculation mode base on the traffic volume, information about traffic volume in each edge must be imported.
 
-Our solution works with the 'traffic.csv' file.
+## Change the street status: open and close streets
+The user can also decide to close a street or to open it. This can be helpfult to simulate different routing scenarios.
+An example of how to use the script routing.py:
 
-To import this type of data on Neo4j you can run this Cypher query:
+```` shell
+python ChangeStreetStatus.py -s "Via Wiligelmo" -st "close" -n neo4j://localhost:7687 -u neo4j -p pwd
 ````
-LOAD CSV WITH HEADERS FROM 'file:///traffic.csv' AS row
-WITH row
-MATCH
-  (a:Node)-[route:ROUTE]-(b:Node)
-WHERE a.osm_id = row.node_start AND b.osm_id = row.node_end AND route.osmid = row.id_road_section
-CREATE (a)-[r:AADT2019 {traffic_volume: tofloat(row.traffic_volume), year: row.year}]->(b)
+The parameters passed:
+
+- _s_ name of the street
+- _st_ "close" for closing "open" for opening
+- _n_ address of the local Neo4j instance 
+- _u_ user of the local Neo4j instance
+- _p_ password of the local Neo4j instance
+
