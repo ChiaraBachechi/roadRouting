@@ -12,6 +12,30 @@ class App:
     def close(self):
         self.driver.close()
 
+    def get_path(self):
+        with self.driver.session() as session:
+            result = session.write_transaction(self._get_path)
+            return result
+
+    @staticmethod
+    def _get_path(tx):
+        result = tx.run("""
+                        Call dbms.listConfig() yield name,value where name = 'dbms.directories.neo4j_home' return value;
+                    """)
+        return result.values()
+        
+    def get_import_folder_name(self):
+        with self.driver.session() as session:
+            result = session.write_transaction(self._get_import_folder_name)
+            return result
+
+    @staticmethod
+    def _get_import_folder_name(tx):
+        result = tx.run("""
+                        Call dbms.listConfig() yield name,value where name = 'dbms.directories.import' return value;
+                    """)
+        return result.values()
+
     def import_node(self):
         with self.driver.session() as session:
             result = session.write_transaction(self._import_node)
@@ -83,7 +107,7 @@ class App:
 
 
 def add_options():
-    parser = argparse.ArgumentParser(description='Creation of routing graph.')
+    parser = argparse.ArgumentParser(description='Insertion of POI in the graph.')
     parser.add_argument('--neo4jURL', '-n', dest='neo4jURL', type=str,
                         help="""Insert the address of the local neo4j instance. For example: neo4j://localhost:7687""",
                         required=True)
@@ -92,9 +116,6 @@ def add_options():
                         required=True)
     parser.add_argument('--neo4jpwd', '-p', dest='neo4jpwd', type=str,
                         help="""Insert the password of the local neo4j instance.""",
-                        required=True)
-    parser.add_argument('--importDir', '-i', dest='neo4j_import', type=str,
-                        help="""Insert the path of the Neo4j import directory, where have to save the .json files.""",
                         required=True)
     parser.add_argument('--minLatitude', '-x', dest='min_lat', type=float,
                         help="""Insert the minimum value of latitude to search for amenities""",
@@ -119,13 +140,10 @@ def main(args=None):
     minlon = options.min_lon
     maxlat = options.max_lat
     maxlon = options.max_lon
+    greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
     result = api.query(f"""[out:json][bbox:{minlat}, {minlon}, {maxlat}, {maxlon}];
                            (   
-                               node["amenity"="restaurant"];
-                               node["amenity"="bar"];
-                               node["amenity"="pub"];
-                               node["amenity"="school"];
-                               node["leisure"="park"];
+                               node["amenity"];
                            );
                            out body;
                            """)
@@ -139,54 +157,13 @@ def main(args=None):
     print("nodes to import:")
     print(res)
     print("-----------------------------------------------------------------------")
-    path = os.path.join(options.neo4j_import, "nodefile.json")
+    path = greeter.get_path()[0][0] + '\\' + greeter.get_import_folder_name()[0][0] + '\\nodefile.json'
 
     with open(path, "w") as f:
         json.dump(res, f)
-
-    api = overpy.Overpass()
-
-    result = api.query(f"""[out:json][bbox:{minlat}, {minlon}, {maxlat}, {maxlon}];
-                    (   
-                            way["amenity"="restaurant"];
-                            way["amenity"="bar"];
-                            way["amenity"="pub"];
-                            way["amenity"="school"];
-                            way["leisure"="park"];
-                    );
-                    (._;>;);
-                    out body;
-                    """)
-
-    list_way = []
-    for node in result.nodes:
-        d = {'type': 'node', 'id': node.id, 'lat': str(node.lat), 'lon': str(node.lon)}
-        list_way.append(d)
-
-    for way in result.ways:
-        d = {'type': 'way', 'id': way.id, 'tags': way.tags}
-        l_node = []
-        for node in way.nodes:
-            l_node.append(node.id)
-        d['nodes'] = l_node
-        list_way.append(d)
-
-    res = {"elements": list_way}
-
-    print("ways to import:")
-    print(res)
-
-    path = os.path.join(options.neo4j_import, "wayfile.json")
-
-    with open(path, "w") as f:
-        json.dump(res, f)
-
-    greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
 
     greeter.import_node()
     print("import nodefile.json: done")
-    greeter.import_way()
-    print("import wayfile.json: done")
     greeter.connect_amenity()
     greeter.close()
 
