@@ -19,8 +19,8 @@ class App:
         result = tx.run("""
                 CALL gds.graph.create.cypher(
                     "graph",
-                    "MATCH (n:Node) RETURN id(n) AS id, n.lat AS lat, n.lon AS lon",
-                    "MATCH (n:Node)-[r:ROUTE | AADT2019]->(m:Node) WHERE r.status = 'active' RETURN id(n) AS source, id(m) AS target, r.traffic_volume_avg as traffic_volume_avg, r.distance as distance, type(r) as type"
+                    "MATCH (n) where n:Node or n:OSMWayNode RETURN id(n) AS id, n.lat AS lat, n.lon AS lon",
+                    "MATCH ()-[r:ROUTE]->() with min(r.AADT) as min_AADT,max(r.AADT) as max_AADT,max(r.distance) as max_dist,min(r.distance) as min_dist MATCH (n)-[r:ROUTE]->(m) WHERE r.status = 'active' RETURN id(n) AS source, id(m) AS target, 0.5 * toFloat((r.AADT-min_AADT)/(max_AADT-min_AADT)) + 0.5 * toFloat((r.distance-min_dist)/(max_dist-min_dist)) as traffic, r.AADT as AADT, r.distance as distance, type(r) as type"
                 )
                         """)
         return result
@@ -44,19 +44,13 @@ class App:
     @staticmethod
     def _search_path_a_star(tx, source, target):
         result = tx.run("""
-                    MATCH (p:PointOfInterest{name: $source})-[:MEMBER]->(wns:OSMWayNode), 
-                    (p1:PointOfInterest{name: $target})-[:MEMBER]->(wnt:OSMWayNode)
-                    WITH wns, wnt 
-                    WHERE (wns)-[:ROUTE]-(:Node) 
-                    AND (wnt)-[:ROUTE]-(:Node) 
-                    UNWIND wns AS sWn 
-                    UNWIND wnt AS tWn 
-                    WITH sWn AS source, tWn AS target, distance(sWn.location, tWn.location) AS dist 
-                    ORDER BY dist LIMIT 1 
+                    MATCH (p:PointOfInterest{name: $source})-[:MEMBER]->(:OSMWayNode)-[:ROUTE]->(wns:Node)
+                        match (p1:PointOfInterest{name: $target})-[:MEMBER]->(:OSMWayNode)-[:ROUTE]->(wnt:Node)
+                    WITH wns as sWn, wnt as tWn
                     CALL gds.shortestPath.astar.stream('graph', {
                         relationshipTypes: ['ROUTE'],
-                        sourceNode: id(source),
-                        targetNode: id(target),
+                        sourceNode: id(sWn),
+                        targetNode: id(tWn),
                         latitudeProperty: 'lat',
                         longitudeProperty: 'lon',
                         relationshipWeightProperty: 'distance'
@@ -75,16 +69,10 @@ class App:
     @staticmethod
     def _search_path_shortest_path(tx, source, target):
         result = tx.run("""
-                    MATCH (p:PointOfInterest{name: $source})-[:MEMBER]->(wns:OSMWayNode), 
-                    (p1:PointOfInterest{name: $target})-[:MEMBER]->(wnt:OSMWayNode)
-                    WITH wns, wnt
-                    WHERE (wns)-[:ROUTE]-(:Node)
-                    AND (wnt)-[:ROUTE]-(:Node)
-                    UNWIND wns AS sWn
-                    UNWIND wnt AS tWn
-                    WITH sWn AS source, tWn AS target, distance(sWn.location, tWn.location) AS dist 
-                    ORDER BY dist LIMIT 1
-                    MATCH path = shortestPath((source)-[:ROUTE*0..300]->(target)) 
+                    MATCH (p:PointOfInterest{name: $source})-[:MEMBER]->(:OSMWayNode)-[:ROUTE]->(wns:Node)
+                        match (p1:PointOfInterest{name: $target})-[:MEMBER]->(:OSMWayNode)-[:ROUTE]->(wnt:Node)
+                    WITH wns as sWn, wnt as tWn
+                    MATCH path = shortestPath((sWn)-[:ROUTE*]->(tWn)) 
                     UNWIND nodes(path) AS node 
                     RETURN node.lat, node.lon """, source=source, target=target)
         return result.values()
@@ -97,27 +85,20 @@ class App:
     @staticmethod
     def _search_path_astar_traffic(tx, source, target):
         result = tx.run("""
-                    MATCH (p:PointOfInterest{name: $source})-[:MEMBER]->(wns:OSMWayNode), 
-                        (p1:PointOfInterest{name: $target})-[:MEMBER]->(wnt:OSMWayNode)
-                    WITH wns, wnt
-                    WHERE (wns)-[:ROUTE]-(:Node)
-                    AND (wnt)-[:ROUTE]-(:Node)
-                    UNWIND wns AS sWn
-                    UNWIND wnt AS tWn
-                    WITH sWn AS source, tWn AS target, distance(sWn.location, tWn.location) AS dist 
-                    ORDER BY dist LIMIT 1
-                    CALL gds.shortestPath.astar.stream('graph', {
-                        relationshipTypes: ['AADT2019'],
-                        sourceNode: id(source),
-                        targetNode: id(target),
-                        latitudeProperty: 'lat',
-                        longitudeProperty: 'lon',
-                        relationshipWeightProperty: 'traffic_volume_avg'
+                    MATCH (p:PointOfInterest{name: $source})-[:MEMBER]->(:OSMWayNode)-[:ROUTE]->(wns:Node)
+                        match (p1:PointOfInterest{name: $target})-[:MEMBER]->(:OSMWayNode)-[:ROUTE]->(wnt:Node)
+                    WITH wns as sWn, wnt as tWn
+                    CALL gds.shortestPath.dijkstra.stream('graph', {
+                        relationshipTypes: ['ROUTE'],
+                        sourceNode: id(sWn),
+                        targetNode: id(tWn),
+                        relationshipWeightProperty: 'traffic'
                     })
                     YIELD index, sourceNode, targetNode, totalCost, nodeIds, costs
                     WITH [nodeId IN nodeIds | gds.util.asNode(nodeId)] AS nodeNames
                     UNWIND nodeNames AS node
-                    RETURN node.lat, node.lon """, source=source, target=target)
+                    RETURN node.lat, node.lon
+					""", source=source, target=target)
         return result.values()
 
     def close_street(self, street):
@@ -230,11 +211,9 @@ def main(args=None):
         print('\nNo result for query')
     else:
         print(ris)
-
-    greeter.delete_projected_graph()
-    fo.PolyLine(ris).add_to(m)
-
-    m.save('map.html')
+        greeter.delete_projected_graph()
+        fo.PolyLine(ris).add_to(m)
+        m.save('map.html')
 
     greeter.close()
     return 0
