@@ -43,7 +43,7 @@ class App:
                         where r2.osmid <> street_name
                         with r2.osmid as source,street_name,m
                         match (r1:RoadOsm {osmid:source}),(r2:RoadOsm {osmid:street_name})
-                        create (r1)-[r:CONNECTED {junction: m.osm_id,location: m.location}]->(r2)
+                        create (r1)-[r:CONNECTED {junction: m.id,location: m.location}]->(r2)
                     """)
         print(result.values())
         return result.values()

@@ -117,17 +117,14 @@ def add_options():
     parser.add_argument('--neo4jpwd', '-p', dest='neo4jpwd', type=str,
                         help="""Insert the password of the local neo4j instance.""",
                         required=True)
-    parser.add_argument('--minLatitude', '-x', dest='min_lat', type=float,
-                        help="""Insert the minimum value of latitude to search for amenities""",
+    parser.add_argument('--latitude', '-x', dest='lat', type=float,
+                        help="""Insert latitude of city center""",
                         required=True)
-    parser.add_argument('--minLongitude', '-y', dest='min_lon', type=float,
-                        help="""Insert the minimum value of longitude to search for amenities""",
+    parser.add_argument('--longitude', '-y', dest='lon', type=float,
+                        help="""Insert longitude of city center""",
                         required=True)
-    parser.add_argument('--maxLatitude', '-z', dest='max_lat', type=float,
-                        help="""Insert the maximum value of latitude to search for amenities""",
-                        required=True)
-    parser.add_argument('--maxLongitude', '-k', dest='max_lon', type=float,
-                        help="""Insert the maximum value of longitude to search for amenities""",
+    parser.add_argument('--distance', '-d', dest='dist', type=float,
+                        help="""Insert distance (in meters) of the area to be cover""",
                         required=True)
     return parser
 
@@ -136,14 +133,13 @@ def main(args=None):
     argParser = add_options()
     options = argParser.parse_args(args=args)
     api = overpy.Overpass()
-    minlat = options.min_lat
-    minlon = options.min_lon
-    maxlat = options.max_lat
-    maxlon = options.max_lon
+    dist = options.dist
+    lon = options.lon
+    lat = options.lat
     greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
-    result = api.query(f"""[out:json][bbox:{minlat}, {minlon}, {maxlat}, {maxlon}];
+    result = api.query(f"""[out:json];
                            (   
-                               node["amenity"];
+                               node(around:{dist},{lat},{lon})["amenity"];
                            );
                            out body;
                            """)
@@ -162,8 +158,46 @@ def main(args=None):
     with open(path, "w") as f:
         json.dump(res, f)
 
+    # api = overpy.Overpass()
+
+    # result = api.query(f"""[out:json][bbox:{minlat}, {minlon}, {maxlat}, {maxlon}];
+                    # (   
+                            # way["amenity"="restaurant"];
+                            # way["amenity"="bar"];
+                            # way["amenity"="pub"];
+                            # way["amenity"="school"];
+                            # way["leisure"="park"];
+                    # );
+                    # (._;>;);
+                    # out body;
+                    # """)
+
+    # list_way = []
+    # for node in result.nodes:
+        # d = {'type': 'node', 'id': node.id, 'lat': str(node.lat), 'lon': str(node.lon)}
+        # list_way.append(d)
+
+    # for way in result.ways:
+        # d = {'type': 'way', 'id': way.id, 'tags': way.tags}
+        # l_node = []
+        # for node in way.nodes:
+            # l_node.append(node.id)
+        # d['nodes'] = l_node
+        # list_way.append(d)
+
+    # res = {"elements": list_way}
+
+    # print("ways to import:")
+    # print(res)
+    # path = greeter.get_path()[0][0] + '\\' + greeter.get_import_folder_name()[0][0] + "\\wayfile.json"
+
+    # with open(path, "w") as f:
+        # json.dump(res, f)
+
     greeter.import_node()
     print("import nodefile.json: done")
+    # greeter.import_way()
+    # print("import wayfile.json: done")
     greeter.connect_amenity()
     greeter.close()
 
