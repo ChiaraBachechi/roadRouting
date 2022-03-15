@@ -7,6 +7,8 @@ Framework that allows to:
 - close and open streets to generate alternative graphs an obtain different routes
 - perform analysis to investigate the most important junction and roads and the most congested areas of a city
 
+For executing all the operations you will need a running instance of neo4j desktop.
+
 ## Requirements
  
 In order to create the routing graph [Neo4j][1] must be installed on the local machine.
