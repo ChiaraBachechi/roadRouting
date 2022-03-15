@@ -1,5 +1,11 @@
-# roadRouting
-Python script to perform routing queries between two nodes in a road graph on Neo4j
+# Road network framework
+Framework that allows to:
+- generate a graph instance in neo4j with both PRIMAL and DUAL representation of the road network from OSM data
+- import amenities
+- import traffic data
+- perform routing based on hops, distance, or traffic
+- close and open streets to generate alternative graphs an obtain different routes
+- perform analysis to investigate the most important junction and roads and the most congested areas of a city
 
 ## Requirements
  
@@ -26,12 +32,12 @@ Moreover, you will need to install [OSMnx][4] and [overpy][5] library for python
 
 ***
 
-## creation of graph
+## creation of  Juntion Graph (PRIMAL approach)
 ### import road network
 Example of how to import nodes of the road network from OSM:
 
 ````shell command
-python graph.py -x 44.645885 -y 10.9255707 -d 9000 -n neo4j://localhost:7687 -u neo4j -p passwd -f modena.graphml
+python crateJunctionGraph.py -x 44.645885 -y 10.9255707 -d 5000 -n neo4j://localhost:7687 -u neo4j -p passwd -f modena.graphml
 ````
 In this case Modena road network have been imported. The parameters passed represent:
 
@@ -49,15 +55,37 @@ In order to perform routing queries between two points of interest (POI) they mu
 
 Example of how to import POI from OSM for the city of Modena:
 ````shell
-python amenity.py -n neo4j://localhost:7687 -u neo4j -p passwd -x 44.622424 -y 10.884421 -z 44.667922 -k 10.964375
+python amenity.py -n neo4j://localhost:7687 -u neo4j -p passwd -x 44.622424 -y 10.884421 -d 5000
 ````
 The parameters passed:
 - _n_ address of the local Neo4j instance 
 - _u_ user of the local Neo4j instance
 - _p_ password of the local Neo4j instance
 - _x_ and _y_ minimum value of latitude and longitude of the bbox that cover the geographic area from which to search the points of interest.
-- _z_ and _k_ maximum value of latitude and longitude of the bbox that cover the geographic area from which to search the points of interest.
+- _d_ distance in meter from the central point (radius of the area of interest)
 ***
+## Creation of Road Section Graph (DUAL approach)
+
+Example of how to import nodes of the road network from OSM:
+
+````shell command
+python crateRoadSectionGraph.py -n neo4j://localhost:7687 -u neo4j -p passwd
+````
+The parameters passed:
+- _n_ address of the local Neo4j instance 
+- _u_ user of the local Neo4j instance
+- _p_ password of the local Neo4j instance
+
+## obtaining some general information about the graphs
+
+````shell command
+python graphAnalysis.py -n neo4j://localhost:7687 -u neo4j -p passwd
+````
+The parameters passed:
+- _n_ address of the local Neo4j instance 
+- _u_ user of the local Neo4j instance
+- _p_ password of the local Neo4j instance
+
 ## Import traffic
 
 Information about traffic volumes can be included in the graph from a csv file formatted as the 'traffic.csv' file includeed in the folder.
@@ -72,6 +100,22 @@ python traffic.py -n neo4j://localhost:7687 -u neo4j -p passwd -f C:\Users\user\
 - _p_ password of the local Neo4j instance
 - _f_ name of the csv file where traffic information between nodes are provided
  
+## Application of graph algorithms to investigate the most important roads or junctions
+
+4 possible analysis, 2 performed on the Junction graph, 1 performed only on the Road Section graph and one performed on both.
+The user will be questioned about the analysis he wants to perform on the basis of the aspected results.
+All the results are saved in local csv files and a visualization is provided in the web browser.
+
+````shell
+python algorithmAppliedToJunctionsAndRoads.py -n neo4j://localhost:7687 -u neo4j -p  ****** -x 44.645885 -y 10.9255707 -f new.csv
+````
+- _x_ latitude of the central point of the area of interest
+- _y_ longitude of the central point of the area of interest
+- _n_ address of the local Neo4j instance 
+- _u_ user of the local Neo4j instance
+- _p_ password of the local Neo4j instance
+- _f_ name of the csv file where to save the results. The name is used as prefix and some suffix are added to distinguish between the results of the different analysis
+
 ## Routing
 Routing between two points can be performed by running the following script. A map with the calculated route highlighted is generated.
 
@@ -100,7 +144,7 @@ The user can also decide to close a street or to open it. This can be helpfult t
 An example of how to use the script routing.py:
 
 ```` shell
-python ChangeStreetStatus.py -s "Via Wiligelmo" -st "close" -n neo4j://localhost:7687 -u neo4j -p passwd
+python changeStreetStatus.py -s "Via Wiligelmo" -st "close" -n neo4j://localhost:7687 -u neo4j -p passwd
 ````
 The parameters passed:
 
