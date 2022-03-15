@@ -116,7 +116,8 @@ python algorithmAppliedToJunctionsAndRoads.py -n neo4j://localhost:7687 -u neo4j
 - _n_ address of the local Neo4j instance 
 - _u_ user of the local Neo4j instance
 - _p_ password of the local Neo4j instance
-- _f_ name of the csv file where to save the results. The name is used as prefix and some suffix are added to distinguish between the results of the different analysis
+- _f_ name of the csv file where to save the results. The name is used as a prefix and some 
+suffixes are added to distinguish between the results of the different analysis
 
 ## Routing
 Routing between two points can be performed by running the following script. A map with the calculated route highlighted is generated.
