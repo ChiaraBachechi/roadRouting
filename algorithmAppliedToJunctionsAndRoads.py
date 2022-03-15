@@ -255,7 +255,7 @@ def main(args=None):
         df.to_csv(options.filename.split('.')[0]+'_road_community.csv',index = False)
         #df = pd.read_csv(options.filename.split('.')[0]+'_road_community.csv')
         #print(df[df.dim>df.dim.mean()].osmid.apply(str).tolist())
-        points = greeter.get_road_points(df[df.dim>(df.dim.mean() + 1)].osmid.apply(str).tolist())
+        points = greeter.get_road_points(df[df.dim > (round(df.dim.mean(),0) + 1)].osmid.apply(str).tolist())
         print(points.head())
         for x in points.osmid.unique():
             point_list = []
@@ -284,7 +284,7 @@ def main(args=None):
         df.to_csv(options.filename.split('.')[0]+'_page-rank.csv',index = False)
         #df = pd.read_csv(options.filename.split('.')[0]+'_road_community.csv')
         #print(df[df.dim>df.dim.mean()].osmid.apply(str).tolist())
-        points = greeter.get_road_points(df.head(100).osmid.apply(str).tolist())
+        points = greeter.get_road_points(df[df.score>= df.score.mean() + df.score.std()*2 ].osmid.apply(str).tolist())
         print(points.head())
         for x in points.osmid.unique():
             point_list = []
