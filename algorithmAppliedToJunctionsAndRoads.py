@@ -191,6 +191,11 @@ def addOptions():
     parser.add_argument('--file', '-f', dest='filename', type=str,
                         help="""Insert the path where to save the node scores in a csv.""",
                         required=True)
+    parser.add_argument('--action', '-a', dest='action', type=int,
+                        help="""Define the action: 1 for most important junctions (BC), 2 for most cogested junctions(DC),
+                              3 for most influent roads (SLLPA), 4 for most congested raods (DC+PR)""",
+                        default = 0,
+                        required=False)
     return parser
 
 
@@ -199,9 +204,11 @@ def main(args=None):
     options = argParser.parse_args(args=args)
     greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
     m = fo.Map(location=[options.latitude, options.longitude], zoom_start=13)
-    mode = input('Do you want to visualize the most important junctions considering road network structure? y[yes],n[No]')
-    mode = mode.lower()
-    if(mode=='y' or mode =='yes'):    
+    mode = 'x'
+    if(options.action == 0):
+        mode = input('Do you want to visualize the most important junctions considering road network structure? y[yes],n[No]')
+        mode = mode.lower()
+    if(mode=='y' or mode =='yes' or options.action == 1):    
         #important junctions considering road network structure
         greeter.create_projected_graph('j')
         greeter.betweenness_centrality()
@@ -219,10 +226,10 @@ def main(args=None):
         url = "file://" + os.getcwd() +  '/betweenness.html'
         webbrowser.open(url,new=new)
         print('\nLook in your browser: a map with the 100 most important junctions will be displayed\n')
-    
-    mode = input('Do you want to visualize the most important junctions considering AADT? y[yes],n[No]')
-    mode = mode.lower()
-    if(mode=='y' or mode =='yes'):
+    if(options.action == 0):
+        mode = input('Do you want to visualize the most important junctions considering traffic? y[yes],n[No]')
+        mode = mode.lower()
+    if(mode=='y' or mode =='yes' or options.action == 2):
         #important junctions considering traffic
         greeter.create_projected_graph('j')
         greeter.degree_centrality()
@@ -239,11 +246,11 @@ def main(args=None):
         #open an HTML file on my own (Windows) computer
         url = "file://" + os.getcwd() +  '/degree.html'
         webbrowser.open(url,new=new)
-        print('\nLook in your browser: a map with the 100 most important junctions considering AADT will be displayed\n')
-
-    mode = input('If you have generated the simplified road graph you can visualize the most important roads.Do you? y[yes],n[No]')
-    mode = mode.lower()
-    if(mode=='y' or mode =='yes'):
+        print('\nLook in your browser: a map with the 100 most important junctions considering traffic will be displayed\n')
+    if(options.action == 0): 
+        mode = input('If you have generated the road section graph you can visualize the most important roads.Do you? y[yes],n[No]')
+        mode = mode.lower()
+    if(mode=='y' or mode =='yes' or options.action == 3):
         #important junctions considering traffic
         #greeter.create_projected_graph('j')
         #greeter.degree_centrality()
@@ -269,10 +276,11 @@ def main(args=None):
         #open an HTML file on my own (Windows) computer
         url = "file://" + os.getcwd() +  '/roads.html'
         webbrowser.open(url,new=new)
-        print('\nLook in your browser: a map with the roads located in several community and thus important considering the graph topology are shown.\n')
-    mode = input('If you have generated the simplified road graph and you have inserted traffic data you can visualize the most important roads considering traffic.Do you? y[yes],n[No]')
-    mode = mode.lower()
-    if(mode=='y' or mode =='yes'):
+        print('\nLook in your browser: a map with the roads located in several community and thus influential considering the graph topology are shown.\n')
+    if(options.action == 0):
+        mode = input('If you have generated the road section graph and you have inserted traffic data you can visualize the most important roads considering traffic.Do you? y[yes],n[No]')
+        mode = mode.lower()
+    if(mode=='y' or mode =='yes' or options.action == 4):
         #important junctions considering traffic
         greeter.create_projected_graph('j')
         greeter.degree_centrality()
