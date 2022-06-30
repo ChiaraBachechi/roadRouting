@@ -27,7 +27,7 @@ You will need to upgrade your DBMS to version 4.2.6.
 
 [3]: https://neo4j.com/labs/apoc/4.1/installation/
 
-Moreover, you will need to install [OSMnx][4] and [overpy][5] library for python.
+Moreover, you will need to install [OSMnx][4] and [overpy][5] library for python, yuo can run pip install -r requirements.txt.
 
 [4]: https://osmnx.readthedocs.io/en/stable/
 [5]: https://anaconda.org/conda-forge/overpy
