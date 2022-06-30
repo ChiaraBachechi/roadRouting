@@ -157,3 +157,15 @@ The parameters passed:
 - _u_ user of the local Neo4j instance
 - _p_ password of the local Neo4j instance
 
+## predefined tests
+In the tests folder there is a pre-composed file where the functions of the framework can be tested. The required attributes are in order:
+1 = latitude of the central point of the generated map
+2 = longitude of the central point of the generated map
+3 = name of the destination point of interest
+4 = address of the local Neo4j instance
+5 = user of the local Neo4j instance
+6 = password of the local Neo4j instance
+7 = name of the file where to save the graph with extention '.graphml' (this file will be created by the script and automatically placed in the import folder of neo4j)
+8 = name of the csv file where traffic information between nodes are provided
+9 = name of the csv file where to save the results. The name is used as a prefix and some 
+suffixes are added to distinguish between the results of the different analysis
