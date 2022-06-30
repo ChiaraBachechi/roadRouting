@@ -14,6 +14,8 @@ class App:
         self.driver.close()
 
     def create_projected_graph(self,mode):
+        """This method creates a new graph as a projection of the existing nodes and relations. 
+           The mode parameter is set to 'r' for dual graph and 'j' for primal graph."""
         with self.driver.session() as session:
             path = session.read_transaction(self._projected_graph,mode)
 
@@ -39,6 +41,8 @@ class App:
         return result
 
     def delete_projected_graph(self,mode):
+        """This method deletes an existing graph projection. 
+           The mode parameter is set to 'r' for dual graph and 'j' for primal graph."""
         with self.driver.session() as session:
             path = session.read_transaction(self._drop_projected_graph,mode)
 
@@ -51,6 +55,7 @@ class App:
 
 
     def betweenness_centrality(self):
+        """This method evaluates the BC of the primal graph."""
         with self.driver.session() as session:
             path = session.write_transaction(self._betweenness_centrality)
             return path
@@ -72,6 +77,7 @@ class App:
         return result.values()
 
     def degree_centrality(self):
+        """This method evaluates the Degree Centrality of the primal graph."""
         with self.driver.session() as session:
             path = session.write_transaction(self._degree_centrality)
             return path
@@ -93,6 +99,8 @@ class App:
         return result.values()
 
     def get_important_junctions(self,property):
+        """This method returns the junctions with the higher centrality value.
+           The property indicates the name of the centrality we are considering: bc or degree."""
         with self.driver.session() as session:
             path = session.read_transaction(self._get_important_junctions,property)
             return path
@@ -106,6 +114,8 @@ class App:
         return df
 
     def update_property(self):
+        """This method transfers the degree centrality property from junctions in the primal graph
+           to relationships in the dual graph."""
         with self.driver.session() as session:
             path = session.write_transaction(self._update_property)
             return path
@@ -121,6 +131,7 @@ class App:
         return result.values()
 
     def speaker_listener_community(self):
+        """This method applies Speaker Listener community detection algorithm to the dual graph."""
         with self.driver.session() as session:
             result = session.read_transaction(self._speaker_listener_community)
             return result
@@ -136,6 +147,7 @@ class App:
         return df
 
     def get_road_points(self,list):
+        """This method returns the geometry of a road of the dual graph finding the corresponding nodes in the primal graph."""
         with self.driver.session() as session:
             result = session.read_transaction(self._get_road_points,list)
             return result
@@ -152,6 +164,7 @@ class App:
         return df
         
     def page_rank_roads(self):
+        """This method applies Page Rank algorithm to the dual graph weighted on the traffic."""
         with self.driver.session() as session:
             result = session.read_transaction(self._page_rank_roads)
             return result
@@ -201,25 +214,35 @@ def addOptions():
 
 def main(args=None):
     argParser = addOptions()
+    #reading the arguments
     options = argParser.parse_args(args=args)
+    #connecting to the neo4j instance
     greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
+    #generating the folium map
     m = fo.Map(location=[options.latitude, options.longitude], zoom_start=13)
     mode = 'x'
     if(options.action == 0):
         mode = input('Do you want to visualize the most important junctions considering road network structure? y[yes],n[No]')
         mode = mode.lower()
+    #visualize the most important junctions (with highest BC) considering road network structure
     if(mode=='y' or mode =='yes' or options.action == 1):    
-        #important junctions considering road network structure
+        #create the projected primal graph
         greeter.create_projected_graph('j')
+        #evaluating Betweenness centrality of the primal graph
         greeter.betweenness_centrality()
+        #returning the junctions ordered by their Betweenness Centrality
         df = greeter.get_important_junctions('bc')
+        #saving the results in a csv file
         df.to_csv(options.filename,index = False)
+        #getting the first 100 most important junctions
         df_100 = df.head(100)
+        #showing the most important junctions in a folium map
         locations = df_100[['latitude', 'longitude']]
         locationlist = locations.values.tolist()
         greeter.delete_projected_graph('j')
         for point in range(0, df_100.shape[0]):
             fo.Marker(locationlist[point], popup=df_100['osmid'][point]).add_to(m)
+        #open the map in the browser
         m.save('betweenness.html')
         new = 2 # open in a new tab, if possible
         #open an HTML file on my own (Windows) computer
@@ -229,19 +252,26 @@ def main(args=None):
     if(options.action == 0):
         mode = input('Do you want to visualize the most important junctions considering traffic? y[yes],n[No]')
         mode = mode.lower()
+    #visualize the most important junctions considering traffic
     if(mode=='y' or mode =='yes' or options.action == 2):
-        #important junctions considering traffic
+        #create the projected primal graph
         greeter.create_projected_graph('j')
+        #evaluate degree centrality of junctions
         greeter.degree_centrality()
+        #returning the junctions ordered by their Degree Centrality
         df = greeter.get_important_junctions('degree')
+        #saving the results in a csv file
         df.to_csv(options.filename.split('.')[0]+'_AADT.csv',index = False)
+        #getting the first 100 most important junctions
         df_100 = df.head(100)
+        #showing the most important junctions in a folium map
         locations = df_100[['latitude', 'longitude']]
         locationlist = locations.values.tolist()
         greeter.delete_projected_graph('j')
         for point in range(0, df_100.shape[0]):
             fo.Marker(locationlist[point], popup=df_100['osmid'][point]).add_to(m)
         m.save('degree.html')
+        #open the map in the browser
         new = 2 # open in a new tab, if possible
         #open an HTML file on my own (Windows) computer
         url = "file://" + os.getcwd() +  '/degree.html'
@@ -250,20 +280,20 @@ def main(args=None):
     if(options.action == 0): 
         mode = input('If you have generated the road section graph you can visualize the most important roads.Do you? y[yes],n[No]')
         mode = mode.lower()
+    #visualize the most important roads based on Speaker Listener community detection
     if(mode=='y' or mode =='yes' or options.action == 3):
-        #important junctions considering traffic
-        #greeter.create_projected_graph('j')
-        #greeter.degree_centrality()
-        #greeter.update_property()
-        #greeter.delete_projected_graph('j')
+        #creating the dual graph
         greeter.create_projected_graph('r')
+        #applying Speaker Listener community algorithm to the dual graph
         df = greeter.speaker_listener_community()
         greeter.delete_projected_graph('r')
+        #saving results in a csv file
         df.to_csv(options.filename.split('.')[0]+'_road_community.csv',index = False)
-        #df = pd.read_csv(options.filename.split('.')[0]+'_road_community.csv')
-        #print(df[df.dim>df.dim.mean()].osmid.apply(str).tolist())
+        #returning the geometry of the roads that appears
+        #in a number of community equal to the average number of community plus 1
         points = greeter.get_road_points(df[df.dim > (round(df.dim.mean(),0) + 1)].osmid.apply(str).tolist())
         print(points.head())
+        #visualizing the results in a folium map
         for x in points.osmid.unique():
             point_list = []
             #print(points[points.osmid == x])
@@ -272,6 +302,7 @@ def main(args=None):
                 point_list.append([p.lat_end,p.lon_end])
             fo.PolyLine(point_list).add_to(m)
         m.save('roads.html')
+        #opening the map in the web browser
         new = 2 # open in a new tab, if possible
         #open an HTML file on my own (Windows) computer
         url = "file://" + os.getcwd() +  '/roads.html'
@@ -280,20 +311,26 @@ def main(args=None):
     if(options.action == 0):
         mode = input('If you have generated the road section graph and you have inserted traffic data you can visualize the most important roads considering traffic.Do you? y[yes],n[No]')
         mode = mode.lower()
+    #visualize the most important roads considering traffic
     if(mode=='y' or mode =='yes' or options.action == 4):
-        #important junctions considering traffic
+        #creating the projections for primal graph
         greeter.create_projected_graph('j')
+        #evaluating the degree centrality for primal graph
         greeter.degree_centrality()
+        #transferring the degree centrality property to relations in the dual graph
         greeter.update_property()
         greeter.delete_projected_graph('j')
+        #creating the projection for the dual graph
         greeter.create_projected_graph('r')
+        #evaluating page rank based on the transferred degree centrality
         df = greeter.page_rank_roads()
         greeter.delete_projected_graph('r')
+        #save results to csv
         df.to_csv(options.filename.split('.')[0]+'_page-rank.csv',index = False)
-        #df = pd.read_csv(options.filename.split('.')[0]+'_road_community.csv')
-        #print(df[df.dim>df.dim.mean()].osmid.apply(str).tolist())
+        #returning the geometry of the roads that have a PG >= at the average PG + 2 times the std
         points = greeter.get_road_points(df[df.score>= df.score.mean() + df.score.std()*2 ].osmid.apply(str).tolist())
         print(points.head())
+        #visualizing the results in a folium map
         for x in points.osmid.unique():
             point_list = []
             #print(points[points.osmid == x])
@@ -302,6 +339,7 @@ def main(args=None):
                 point_list.append([p.lat_end,p.lon_end])
             fo.PolyLine(point_list).add_to(m)
         m.save('roadstraffic.html')
+        #visualizing the results in the web browser
         new = 2 # open in a new tab, if possible
         #open an HTML file on my own (Windows) computer
         url = "file://" + os.getcwd() +  '/roadstraffic.html'
