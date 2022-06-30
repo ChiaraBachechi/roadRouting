@@ -1,0 +1,6 @@
+neo4j==4.4.1
+overpy==0.6
+osmnx==1.1.2
+pandas==1.4.1
+folium==0.12.1.post1
+numpy==1.22.2
