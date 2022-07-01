@@ -12,6 +12,7 @@ class App:
         self.driver.close()
 
     def creation_graph(self):
+        #creation of the dual graph
         with self.driver.session() as session:
             result = session.write_transaction(self._creation_graph)
             return result
@@ -65,8 +66,11 @@ def add_options():
 
 def main(args=None):
     argParser = add_options()
+    #retrieve arguments
     options = argParser.parse_args(args=args)
+    #connecting to the neo4j instance
     greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
+    #creation of the dual graph
     greeter.creation_graph()
     greeter.close()
     return 0
