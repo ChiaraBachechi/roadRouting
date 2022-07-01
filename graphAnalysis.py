@@ -11,6 +11,8 @@ class App:
         self.driver.close()
 
     def create_projected_graph(self,mode):
+        """This method creates a new graph as a projection of the existing nodes and relations. 
+           The mode parameter is set to 'r' for dual graph and 'j' for primal graph."""
         with self.driver.session() as session:
             path = session.read_transaction(self._projected_graph,mode)
 
@@ -36,6 +38,8 @@ class App:
         return result
 
     def delete_projected_graph(self):
+        """This method deletes an existing graph projection. 
+           The mode parameter is set to 'r' for dual graph and 'j' for primal graph."""
         with self.driver.session() as session:
             path = session.read_transaction(self._drop_projected_graph)
 
@@ -47,6 +51,7 @@ class App:
         return result
 
     def countNodes(self,mode):
+        """the method counts the number of nodes of mode label"""
         with self.driver.session() as session:
             result = session.write_transaction(self._countNodes,mode)
             print('{} is the number of nodes'.format(result[0][0]))
@@ -62,6 +67,7 @@ class App:
         return result.values()
 
     def countRoutes(self,mode):
+        """the methods counts the number of relationships of mode type"""
         with self.driver.session() as session:
             result = session.write_transaction(self._countRoutes,mode)
             print('{} is the number of relations.'.format(result[0][0]))
@@ -77,6 +83,7 @@ class App:
         return result.values()
 
     def outgoingDegree(self):
+        """the method counts the number of outgoing relationships from each node"""
         with self.driver.session() as session:
             result = session.write_transaction(self._outgoingDegree)
         return result
@@ -92,6 +99,7 @@ class App:
         return result
 
     def incomingDegree(self):
+        """the method counts the number of incoming relationships from each node"""
         with self.driver.session() as session:
             result = session.write_transaction(self._incomingDegree)
         return result
@@ -107,6 +115,7 @@ class App:
         return result
 
     def undirectedDegree(self):
+        """the method counts the number of incoming and outgoing relationships from each node"""
         with self.driver.session() as session:
             result = session.write_transaction(self._undirectedDegree)
         return result
@@ -123,6 +132,7 @@ class App:
         return result
 
     def summarize(self):
+        """the method counts the total number of relationships, the total number of nodes and the density of the graph."""
         with self.driver.session() as session:
             result = session.write_transaction(self._summarize)
         return result
@@ -153,17 +163,28 @@ def addOptions():
 
 def main(args=None):
     argParser = addOptions()
+    #retrieving arguments
     options = argParser.parse_args(args=args)
+    #connecting with the neo4j instance
     greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
-    mode = input('Select the graph you want to analyse [r] for road segments based graph, [j] for junctions based graph.')
+    #asking the user if he wants to analyse the primal or dual graph
+    mode = input('Select the graph you want to analyse [r] for dual graph, [j] for primal graph.')
     mode = mode.lower()
+    #creating the projection of the selected graph
     greeter.create_projected_graph(mode)
+    #counting the nodes
     greeter.countNodes(mode)
+    #counting relationships
     greeter.countRoutes(mode)
+    #evaluating the incoming degree
     greeter.incomingDegree()
+    #evaluating the outgoing degree
     greeter.outgoingDegree()
+    #evaluating the total degree
     greeter.undirectedDegree()
+    #retrieving additional statistics (density)
     greeter.summarize()
+    #removing the projected graph
     greeter.delete_projected_graph()
     greeter.close()
     return 0
