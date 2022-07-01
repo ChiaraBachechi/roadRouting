@@ -11,6 +11,8 @@ class App:
         self.driver.close()
 
     def close_street(self, street):
+        """the method closes the given street to traffic 
+           setting its status to close and connecting its POI to other roads"""
         with self.driver.session() as session:
             result = session.write_transaction(self._close_one_street, street)
             print('{} is now close'.format(street))
@@ -43,6 +45,8 @@ class App:
         return result.values()
 
     def active_street(self, street):
+        """the method opens the given street to traffic 
+           setting its status to active and re-connecting its POI to other roads"""
         with self.driver.session() as session:
             result = session.write_transaction(self._active_one_street, street)
             print('{} is now active'.format(street))
@@ -92,13 +96,17 @@ def addOptions():
 
 def main(args=None):
     argParser = addOptions()
+    #retrieving attributes
     options = argParser.parse_args(args=args)
     street = options.street_name
     status = options.new_status
+    #connecting to Neo4j instance
     greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
     if (status == 'open'):
+        #opening the given street
         greeter.active_street(street)
     else:
+        #closing the given street
         greeter.close_street(street)
     greeter.close()
     return 0
