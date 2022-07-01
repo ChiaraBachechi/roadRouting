@@ -12,6 +12,7 @@ class App:
         self.driver.close()
 
     def creation_graph(self, file):
+        """create the graph from the .graphml file"""
         with self.driver.session() as session:
             result = session.write_transaction(self._creation_graph, file)
             return result
@@ -24,6 +25,7 @@ class App:
         return result.values()
 
     def get_path(self):
+        """gets the path of the neo4j instance"""
         with self.driver.session() as session:
             result = session.write_transaction(self._get_path)
             return result
@@ -36,6 +38,7 @@ class App:
         return result.values()
         
     def get_import_folder_name(self):
+        """get the name of the import directory for the neo4j instance"""
         with self.driver.session() as session:
             result = session.write_transaction(self._get_import_folder_name)
             return result
@@ -48,6 +51,7 @@ class App:
         return result.values()
 
     def set_label(self):
+        """set the Node lable to nodes"""
         with self.driver.session() as session:
             result = session.write_transaction(self._creation_label)
             return result
@@ -60,6 +64,7 @@ class App:
         return result.values()
 
     def set_location(self):
+        """insert the location in the node attributes"""
         with self.driver.session() as session:
             result = session.write_transaction(self._creation_location)
             return result
@@ -74,6 +79,7 @@ class App:
         return result.values()
 
     def set_distance(self):
+        """insert the distance in the nodes' relationships."""
         with self.driver.session() as session:
             result = session.write_transaction(self._set_distance)
             return result
@@ -86,6 +92,7 @@ class App:
         return result.values()
     
     def set_index(self):
+        """create index on nodes"""
         with self.driver.session() as session:
             result = session.write_transaction(self._set_index)
             return result
@@ -126,9 +133,12 @@ def add_options():
 
 def main(args=None):
     argParser = add_options()
+    #retireve attributes
     options = argParser.parse_args(args=args)
+    #connecting to the neo4j instance
     greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
     path = greeter.get_path()[0][0] + '\\' + greeter.get_import_folder_name()[0][0] + '\\' + options.file_name
+    #using osmnx to generate the graphml file
     G = ox.graph_from_point((options.lat, options.lon),
                             dist=int(options.dist),
                             dist_type='bbox',
@@ -136,13 +146,16 @@ def main(args=None):
                             network_type='drive'
                             )
     ox.save_graphml(G, path)
-
-
+    #creating the graph
     greeter.creation_graph(options.file_name)
+    #setting nodes' labels
     greeter.set_label()
+    #setting nodes' locations
     greeter.set_location()
+    #setting nodes' distances
     greeter.set_distance()
-    #greeter.set_index()
+    #setting index
+    greeter.set_index()
     greeter.close()
 
     return 0
