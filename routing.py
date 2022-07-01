@@ -11,6 +11,8 @@ class App:
         self.driver.close()
 
     def create_projected_graph(self):
+	"""This method creates a new graph as a projection of the existing nodes and relations. 
+           The mode parameter is set to 'r' for dual graph and 'j' for primal graph."""
         with self.driver.session() as session:
             path = session.read_transaction(self._projected_graph)
 
@@ -26,6 +28,8 @@ class App:
         return result
 
     def delete_projected_graph(self):
+	"""This method deletes an existing graph projection. 
+           The mode parameter is set to 'r' for dual graph and 'j' for primal graph."""
         with self.driver.session() as session:
             path = session.read_transaction(self._drop_projected_graph)
 
@@ -37,6 +41,7 @@ class App:
         return result
 
     def read_distance_path(self, source, target):
+        """Finds the shortest path based on distance between the soruce and the target.(A*)"""
         with self.driver.session() as session:
             path = session.read_transaction(self._search_path_a_star, source, target)
             return path
@@ -62,6 +67,7 @@ class App:
         return result.values()
 
     def read_shortest_path(self, source, target):
+        """Finds the shortest path based on hops between the soruce and the target."""
         with self.driver.session() as session:
             path = session.read_transaction(self._search_path_shortest_path, source, target)
             return path
@@ -78,6 +84,7 @@ class App:
         return result.values()
 
     def read_traffic_path(self, source, target):
+        """Finds the shortest path based on traffic between the soruce and the target.(A*)"""
         with self.driver.session() as session:
             path = session.read_transaction(self._search_path_astar_traffic, source, target)
             return path
@@ -99,65 +106,6 @@ class App:
                     UNWIND nodeNames AS node
                     RETURN node.lat, node.lon
 					""", source=source, target=target)
-        return result.values()
-
-    def close_street(self, street):
-        with self.driver.session() as session:
-            result = session.write_transaction(self._close_one_street, street)
-            print('{} is now close'.format(street))
-            return result
-
-    @staticmethod
-    def _close_one_street(tx, street):
-        result = tx.run("""
-                    MATCH ()-[r:ROUTE]-() 
-                    WHERE r.name = $street  
-                        SET r.status='close' 
-
-                    WITH r 
-                    MATCH (p:PointOfInterest)-[:MEMBER]->(wn:OSMWayNode)-[re:ROUTE]-(:Node)-[r]-(:Node) 
-                        DELETE re 
-                    WITH wn, wn.location AS poi 
-                    MATCH (n:Node)-[ra:ROUTE]-(:Node) 
-                        WHERE n <> wn 
-                        AND distance(n.location, poi) < 100 
-                        AND ra.status = 'active' 
-
-                    WITH n, wn, distance(n.location, poi) AS dist ORDER BY dist 
-
-                    WITH head(collect(n)) AS nv, wn 
-                    MERGE (wn)-[r:ROUTE]->(nv) 
-                        ON CREATE SET r.distance = distance(nv.location, wn.location), r.status='active' 
-                    MERGE (wn)<-[ri:ROUTE]-(nv) 
-                        ON CREATE SET ri.distance = distance(nv.location, wn.location), ri.status='active' """,
-                        street=street)
-        return result.values()
-
-    def active_street(self, street):
-        with self.driver.session() as session:
-            result = session.write_transaction(self._active_one_street, street)
-            print('{} is now active'.format(street))
-            return result
-
-    @staticmethod
-    def _active_one_street(tx, street):
-        result = tx.run("""
-            MATCH (n)-[r:ROUTE]-() 
-            WHERE r.name = $street  
-                SET r.status = 'active' 
-            WITH n 
-            MATCH (p:PointOfInterest)-[:MEMBER]->(wn:OSMWayNode) 
-            WHERE distance(wn.location, n.location) < 100 
-            WITH wn, n 
-            MATCH (wn)-[r:ROUTE]-() 
-                DELETE r 
-            WITH n, wn, distance(wn.location, n.location) AS dist ORDER BY dist 
-            WITH head(collect(n)) AS nv, wn 
-            MERGE (wn)-[rn:ROUTE]->(nv) 
-                ON CREATE SET rn.distance = distance(wn.location, nv.location), rn.status = 'active' 
-            MERGE (wn)<-[rni:ROUTE]-(nv) 
-                ON CREATE SET rni.distance = distance(wn.location, nv.location), rni.status = 'active' """,
-                        street=street)
         return result.values()
 
 
@@ -189,24 +137,27 @@ def addOptions():
 
 def main(args=None):
     argParser = addOptions()
+    #retrieving arguments
     options = argParser.parse_args(args=args)
     sourceNode = options.source
     targetNode = options.destination
+    #connecting to the neo4j instance
     greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
+    #creating the folium map
     m = fo.Map(location=[options.latitude, options.longitude], zoom_start=13)
-
+    #asking the user what type of shortest path he needs
     mode = input('Select shortest path for distance[d], hops[h] or traffic volume[t] ')
     mode = mode.lower()
-
+    #creating the projected graph
     greeter.create_projected_graph()
-
+    #evaluating the shortest path
     if mode.startswith('d'):
         ris = greeter.read_distance_path(sourceNode, targetNode)
     elif mode.startswith('h'):
         ris = greeter.read_shortest_path(sourceNode, targetNode)
     elif mode.startswith('t'):
         ris = greeter.read_traffic_path(sourceNode, targetNode)
-
+    #add the path to the map
     if len(ris) == 0:
         print('\nNo result for query')
     else:
