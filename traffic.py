@@ -12,6 +12,7 @@ class App:
         self.driver.close()
 
     def get_path(self):
+        #gets the path of the neo4j instance
         with self.driver.session() as session:
             result = session.write_transaction(self._get_path)
             return result
@@ -24,6 +25,7 @@ class App:
         return result.values()
         
     def get_import_folder_name(self):
+        #gets the name of the import folder of the neo4j instance
         with self.driver.session() as session:
             result = session.write_transaction(self._get_import_folder_name)
             return result
@@ -36,6 +38,7 @@ class App:
         return result.values()
 
     def import_traffic(self):
+        #imports the traffic from the csv file to the graph
         with self.driver.session() as session:
             result = session.write_transaction(self._import_traffic)
             return result
@@ -52,6 +55,7 @@ class App:
         return result.values()
 
     def add_route_AADT_property(self):
+        #insert AADT as a property of the route relationship in the primal graph
         with self.driver.session() as session:
             result = session.write_transaction(self._add_route_AADT_property)
             return result
@@ -70,12 +74,14 @@ class App:
         return result.values()
 
     def estimate_AADT_property(self):
+        #estimates the AADT where no traffic data are provided
         with self.driver.session() as session:
             result = session.write_transaction(self._estimate_AADT_property)
             return result
 
     @staticmethod
     def _estimate_AADT_property(tx):
+        #considering nearest AADT relationships
         result = tx.run("""
                         MATCH (n:Node)-[route:ROUTE]->(m:Node)  WHERE NOT EXISTS(route.AADT)
                            call { with n
@@ -90,13 +96,14 @@ class App:
                            call { with n
                                   match (n)-[r:ROUTE*1..3]->(b:Node)
                                   unwind r as p
-                                  return avg(p.traffic_volume) as avgTraf
+                                  return avg(p.AADT) as avgTraf
                                 }
                            set route.AADT = avgTraf
                     """)
         return result.values()
     
     def find_highway_types(self):
+        #returns all the highway types from the route relationships' attributes
         with self.driver.session() as session:
             result = session.write_transaction(self._find_highway_types)
             return result
@@ -110,6 +117,7 @@ class App:
         return result.values()
 
     def estimate_AADT_from_road_type(self,name,value):
+        #evaluates AADT considering the AADT of roads of the same type
         with self.driver.session() as session:
             result = session.write_transaction(self._estimate_AADT_from_road_type,name,value)
             return result
@@ -150,23 +158,25 @@ def add_options():
 
 def main(args=None):
     argParser = add_options()
+    #retrieve arguments
     options = argParser.parse_args(args=args)
+    #connecting neo4j instance
     greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
+    #copying the traffic file in the import folder of neo4j
     path = greeter.get_path()[0][0] + '\\' + greeter.get_import_folder_name()[0][0] + '\\traffic.csv'
     shutil.copyfile(options.file_name, path)
+    #import traffic data in the graph
     greeter.import_traffic()
-    print('AADT relations have been generated')
+    #insert AADT property in the ROUTE relationships of the primal graph
     greeter.add_route_AADT_property()
-    print('AADT property was inserted in ROUTE relations.')
-    ##extimate traffic flow where the route relation has no AADT property
+    #extimate traffic flow where the route relation has no AADT property
     greeter.estimate_AADT_property()
-    print('AADT property was estimated by neighbour.')
+    #retrieve all the highway types in the graph
     road_types = greeter.find_highway_types()
-    #print(road_types)
+    #for each road type estimate the AADT where missing
     for h in road_types:
         if h[1]:
             greeter.estimate_AADT_from_road_type(h[0],h[1])
-    print('AADT property was estimated by type.')
     greeter.close()
     return 0
 
