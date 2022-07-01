@@ -13,6 +13,7 @@ class App:
         self.driver.close()
 
     def get_path(self):
+        """get neo4j folder."""
         with self.driver.session() as session:
             result = session.write_transaction(self._get_path)
             return result
@@ -25,6 +26,7 @@ class App:
         return result.values()
         
     def get_import_folder_name(self):
+        """get neo4j instance import folder name""""
         with self.driver.session() as session:
             result = session.write_transaction(self._get_import_folder_name)
             return result
@@ -37,6 +39,7 @@ class App:
         return result.values()
 
     def import_node(self):
+        """import POI nodes in the graph."""
         with self.driver.session() as session:
             result = session.write_transaction(self._import_node)
             return result
@@ -59,6 +62,7 @@ class App:
         return result.values()
 
     def import_way(self):
+        """import POI ways in the graph."""
         with self.driver.session() as session:
             result = session.write_transaction(self._import_way)
             return result
@@ -68,12 +72,7 @@ class App:
         result = tx.run("""
                         CALL apoc.load.json("wayfile.json") YIELD value 
                         UNWIND value.elements AS elements
-                        WITH [item IN elements WHERE elements.type = 'way'] AS ways,
-                            [item IN elements WHERE elements.type = 'node'] AS nodes
-                        FOREACH(node IN nodes | MERGE (n:OSMWayNode:Node {osm_id: node.id}) 
-                                ON CREATE SET n.lat = tofloat(node.lat), n.lon = tofloat(node.lon), 
-                                n.location = point({latitude: tofloat(node.lat), longitude: tofloat(node.lon)}))
-                        WITH ways
+                        WITH [item IN elements WHERE elements.type = 'way'] AS ways
                         UNWIND ways AS way
                         MERGE (w:Way:PointOfInterest {osm_id: way.id}) ON CREATE SET w.name = way.tags.name
                         MERGE (w)-[:TAGS]->(t:Tag) ON CREATE SET t += way.tags
@@ -85,6 +84,7 @@ class App:
         return result.values()
 
     def connect_amenity(self):
+        """Connect the OSMWayNode of the POI to the nearest Node in the graph."""
         with self.driver.session() as session:
             result = session.write_transaction(self._connect_amenity)
 
@@ -131,12 +131,17 @@ def add_options():
 
 def main(args=None):
     argParser = add_options()
+    #retrieving arguments
     options = argParser.parse_args(args=args)
+    #creating an instance of the overpass API
     api = overpy.Overpass()
+    #define the bounding circle
     dist = options.dist
     lon = options.lon
     lat = options.lat
+    #connecting to the neo4j instance
     greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
+    #query the api for POI nodes
     result = api.query(f"""[out:json];
                            (   
                                node(around:{dist},{lat},{lon})["amenity"];
@@ -145,6 +150,7 @@ def main(args=None):
                            """)
 
     list_node = []
+    #save nodes in a local file
     for node in result.nodes:
         d = {'type': 'node', 'id': node.id, 'lat': str(node.lat), 'lon': str(node.lon), 'tags': node.tags}
         list_node.append(d)
@@ -158,41 +164,36 @@ def main(args=None):
     with open(path, "w") as f:
         json.dump(res, f)
 
-    # api = overpy.Overpass()
+    api = overpy.Overpass()
 
-    # result = api.query(f"""[out:json][bbox:{minlat}, {minlon}, {maxlat}, {maxlon}];
-                    # (   
-                            # way["amenity"="restaurant"];
-                            # way["amenity"="bar"];
-                            # way["amenity"="pub"];
-                            # way["amenity"="school"];
-                            # way["leisure"="park"];
-                    # );
-                    # (._;>;);
-                    # out body;
-                    # """)
+    result = api.query(f"""[out:json];
+                           (   
+                               way(around:{dist},{lat},{lon})["amenity"];
+                           );
+                           out body;
+                    """)
 
-    # list_way = []
-    # for node in result.nodes:
+    list_way = []
+    #for node in result.nodes:
         # d = {'type': 'node', 'id': node.id, 'lat': str(node.lat), 'lon': str(node.lon)}
         # list_way.append(d)
 
-    # for way in result.ways:
-        # d = {'type': 'way', 'id': way.id, 'tags': way.tags}
-        # l_node = []
-        # for node in way.nodes:
-            # l_node.append(node.id)
-        # d['nodes'] = l_node
-        # list_way.append(d)
+    for way in result.ways:
+        d = {'type': 'way', 'id': way.id, 'tags': way.tags}
+        l_node = []
+        for node in way.nodes:
+            l_node.append(node.id)
+        d['nodes'] = l_node
+        list_way.append(d)
 
-    # res = {"elements": list_way}
+    res = {"elements": list_way}
 
     # print("ways to import:")
     # print(res)
-    # path = greeter.get_path()[0][0] + '\\' + greeter.get_import_folder_name()[0][0] + "\\wayfile.json"
+    path = greeter.get_path()[0][0] + '\\' + greeter.get_import_folder_name()[0][0] + "\\wayfile.json"
 
-    # with open(path, "w") as f:
-        # json.dump(res, f)
+    with open(path, "w") as f:
+        json.dump(res, f)
 
     greeter.import_node()
     print("import nodefile.json: done")
