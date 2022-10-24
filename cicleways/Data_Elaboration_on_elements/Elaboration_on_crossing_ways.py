@@ -8,6 +8,7 @@ import numpy as np
 import json
 from shapely import wkt
 
+#insert ids in crossing nodes and generate the json files with WKT geometries
 
 class App:
     def __init__(self, uri, user, password):
@@ -82,13 +83,17 @@ def save_gdf(gdf_crossing_ways, path):
 
 
 def main(args=None):
+    #find the folder where the file containing the crossings is located
     argParser = add_options()
     options = argParser.parse_args(args=args)
     greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
     path = greeter.get_path()[0][0] + '\\' + greeter.get_import_folder_name()[0][0] + '\\'
-
+    
+    #open the file and generate a geopandas dataframe with WKT geoemtries 
+    #converting the CRS to produce measures in meters
     gdf_crossing_ways =  read_file(path + options.file_name)
-
+    
+    #inserting the id in the dataframe and save the file as a json file
     gdf_crossing_ways = insert_id_num(gdf_crossing_ways)
     print("Insertion of id_num : done")
 
