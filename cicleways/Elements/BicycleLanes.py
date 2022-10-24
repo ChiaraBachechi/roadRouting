@@ -21,6 +21,7 @@ class App:
 
     @staticmethod
     def _import_bicycle_lanes(tx, file):
+        #insert the cycleways in the local file as nodes into the graph database
         result = tx.run("""
                         call apoc.load.json($file) yield value as value with value.data as data unwind data as record
                         MERGE(n:BicycleLane {id_num : record.id_num}) ON CREATE SET n.osm_id = record.id, n.ID_E = record.ID_E, 
@@ -40,6 +41,7 @@ class App:
 
     @staticmethod
     def _import_lanes_in_spatial_layer(tx):
+        #emplying Neo4j spatial inserting the cycleway nodes in the spatial layer
         result = tx.run("""
                        match(n:BicycleLane) with collect(n) as lanes UNWIND lanes AS l CALL spatial.addNode('spatial', l) yield node return node
         """)
@@ -69,6 +71,7 @@ class App:
 
     @staticmethod
     def _find_intersected_lanes(tx):
+        #find cycleways geometries that intersect and connceted them with the CONTINUE_ON_LANE relationship
         result = tx.run("""
                     match(n:BicycleLane) with collect(n) as lanes UNWIND lanes as l 
                     call spatial.intersects('spatial', l.geometry) yield node UNWIND node as p 
@@ -89,6 +92,8 @@ class App:
     
     @staticmethod
     def _find_touched_lanes(tx):
+        #exploit the information obtained through geopandas regarding the cycleways that have only one point in common
+        #generating the 'CONTINUE_ON_LANE' relationship
         result = tx.run("""
                 match(n:BicycleLane) where NOT isEmpty(n.touched_lanes) unwind n.touched_lanes as cicleway match(n1:BicycleLane) 
                 where n1.id_num=cicleway 
@@ -111,6 +116,8 @@ class App:
     
     @staticmethod
     def _find_closest_lanes(tx, file):
+        #exploit the information obtained through geopandas regarding the cycleways that are located nearby
+        #generating the 'CONTINUE_ON_LANE_BY_CROSSING_ROAD' relationship
         result = tx.run("""
             call apoc.load.json($file) yield value as value with value.data as data 
             unwind data as record match (b:BicycleLane) where b.id_num = record.id_num and NOT isEmpty(record.closest_lanes)
@@ -141,35 +148,42 @@ def add_options():
 
 
 def main(args=None):
+    #connect to the neo4j instance
     argParser = add_options()
     options = argParser.parse_args(args=args)
     greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
-
+    
+    #importing the cycleways i the graph
     start_time = time.time()
     greeter.import_bicycle_lanes(options.file_name)
     print("import cicleways_total.json: done")
     print("Execution time : %s seconds" % (time.time() - start_time))
-
+    
+    #importing the cycleways in the spatial layer
     start_time = time.time()
     greeter.import_lanes_in_spatial_layer()
     print("Import the cicleways in the spatial layer: done")
     print("Execution time : %s seconds" % (time.time() - start_time))
-
+    
+    #adding an index on the cycleway identifier
     start_time = time.time()
     greeter.add_index()
     print("Add an index on the id_num : done")
     print("Execution time : %s seconds" % (time.time() - start_time))
-
+    
+    #generate connections between the cycleways that interect
     start_time = time.time()
     greeter.find_intersected_lanes()
     print("Find the intersected lanes: done")
     print("Execution time : %s seconds" % (time.time() - start_time))
-
+    
+    #generate connections between the cycleways that interect only in a point
     start_time = time.time()
     greeter.find_touched_lanes()
     print("Find the lanes that touches each other: done")
     print("Execution time : %s seconds" % (time.time() - start_time))
-
+    
+    #generate connections between the cycleways that are located nearby
     start_time = time.time()
     greeter.find_closest_lanes(options.file_name)
     print('Find the lanes that are close to each other: done')
