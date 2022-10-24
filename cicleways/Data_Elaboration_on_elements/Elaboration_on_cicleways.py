@@ -8,6 +8,7 @@ import numpy as np
 import json
 from shapely import wkt
 
+#exploring the spatial relationships between cycleways and cycleways
 
 class App:
     def __init__(self, uri, user, password):
@@ -73,11 +74,14 @@ def insert_id_num(gdf_cicleways):
     gdf_cicleways.insert(2, 'id_num', l_ids)
 
 def compute_length(gdf_cicleways):
+    #approximate the lenght of the cycleways to the half of the length of its perimeter
     gdf_cicleways.to_crs(epsg=3035)
     gdf_cicleways['length'] = gdf_cicleways['geometry'].length/2
 
 
 def find_touched_lanes(gdf_cicleways):
+    #find the cycleways that have only one point in common 
+    #and add the list to the cycleway geodataframe attributes
     s = gdf_cicleways['geometry']
 
 
@@ -95,6 +99,7 @@ def find_touched_lanes(gdf_cicleways):
 
 
 def find_closest_lanes(gdf_cicleways):
+    #find the cycleways that are located in a radius major than 0.5m but lower than 20m from each others
     list_closest_lanes = []
     for i in range(gdf_cicleways.shape[0]):
         list_closest_lanes.append([])
@@ -125,24 +130,30 @@ def save_gdf(gdf_cicleways, path):
 
 
 def main(args=None):
+    #find the folder where the file containing the cycleways is located
     argParser = add_options()
     options = argParser.parse_args(args=args)
     greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
     path = greeter.get_path()[0][0] + '\\' + greeter.get_import_folder_name()[0][0] + '\\' 
-
+    
+    #read the files of the cycleways and insert the index in the geodataframe
     gdf_cicleways = read_file(path + options.file_name)
     insert_id_num(gdf_cicleways)
     print("Insertion of id_num : done")
-
+    
+    #Compute the length of the cicleways
     compute_length(gdf_cicleways)
     print("Compute the length of the cicleways : done")
-
+    
+    #Find cicleways that have only one point in common
     find_touched_lanes(gdf_cicleways)
     print("Find cicleways that touch each other : done")
-
-    find_closest_lanes(gdf_cicleways)
-    print("Find cicleways that are close to each other, but bot in contact: done")
     
+    #Find cycleways located nearby in a radius of maximum 20 meters
+    find_closest_lanes(gdf_cicleways)
+    print("Find cicleways that are close to each other, but not in contact: done")
+    
+    #add the new information as attributes in the geodataframe and save them in a local file
     save_gdf(gdf_cicleways, path + "cicleways.json")
 
 
