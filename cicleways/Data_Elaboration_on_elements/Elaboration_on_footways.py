@@ -8,6 +8,7 @@ import numpy as np
 import json
 from shapely import wkt
 
+#exploring the spatial relationships between footways and footways
 
 class App:
     def __init__(self, uri, user, password):
@@ -74,6 +75,8 @@ def insert_id_num(gdf_footways):
 
 
 def find_touched_footways(gdf_footways):
+    #find the cycleways that have only one point in common 
+    #and add the list to the cycleway geodataframe attributes
     s = gdf_footways['geometry']
 
     list_touched_footways = []
@@ -96,6 +99,7 @@ def find_touched_footways(gdf_footways):
 
 
 def find_closest_footways(gdf_footways):
+    #find the cycleways that are located in a radius major than 0.5m but lower than 20m from each others
     list_closest_footways = []
     for i in range(gdf_footways.shape[0]):
         list_closest_footways.append([])
@@ -126,23 +130,28 @@ def save_gdf(gdf_footways, path):
 
 
 def main(args=None):
+    #find the folder where the file containing the footways is located
     argParser = add_options()
     options = argParser.parse_args(args=args)
     greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
     path = greeter.get_path()[0][0] + '\\' + greeter.get_import_folder_name()[0][0] + '\\' 
-
+    
+    #read the files of the cycleways and compute their lenght
     gdf_footways = read_file(path + options.file_name)
     gdf_footways['length'] = gdf_footways['geometry'].length
-
+    
+    #insert the id of the footways in the geopandas dataframe
     insert_id_num(gdf_footways)
     print("Insertion of id_num : done")
-
+    
+    #Find footways that have only one point in common
     gdf_footways = find_touched_footways(gdf_footways)
     print("Find footways that touch each other : done")
-
+    
+    #Find cycleways located nearby in a radius of maximum 20 meters
     gdf_footways = find_closest_footways(gdf_footways)
     print("Find footways that are close to each other, but bot in contact: done")
-    
+    #add the new information as attributes in the geodataframe and save them in a local file
     save_gdf(gdf_footways, path + "footways.json")
 
 
