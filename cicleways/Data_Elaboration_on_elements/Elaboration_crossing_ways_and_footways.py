@@ -8,6 +8,8 @@ import numpy as np
 import json
 from shapely import wkt
 
+#exploring spatial relationships between crossing represented as way elements and footways
+
 
 class App:
     def __init__(self, uri, user, password):
@@ -72,8 +74,10 @@ def read_file(path):
 
 
 def find_footways_close_to_crossing_ways(gdf_footways, gdf_crossing_ways):
+    #set the coordinate reference system that refers to meters
     gdf_crossing_ways.to_crs(epsg=3035, inplace=True)
-
+    
+    #generate a list with all the footways that are located in a radius of maximum 2 meters from the crossing
     s = gdf_footways['geometry']
     list_closest_footways = []
 
@@ -86,6 +90,7 @@ def find_footways_close_to_crossing_ways(gdf_footways, gdf_crossing_ways):
             if l_dist[i] <= 2:
                 l1.append(gdf_footways.iloc[i].id_num)
         list_closest_footways.append(l1)
+    #inserting the list as a new attribute in the dataframe
     gdf_crossing_ways['closest_footways'] = list_closest_footways
 
     return gdf_crossing_ways
@@ -102,17 +107,20 @@ def save_gdf(gdf, path):
 
 
 def main(args=None):
+    #find the folder where the file containing the crossings is located
     argParser = add_options()
     options = argParser.parse_args(args=args)
     greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
     path = greeter.get_path()[0][0] + '\\' + greeter.get_import_folder_name()[0][0] + '\\' 
-
+    
+    #read the files of the footways and the crossings obtained from OSM
     gdf_footways = read_file(path + options.file_name_footways)
     gdf_crossing_ways = read_file(path + options.file_name_crossings)
     
+    #finding the crossings that are located nearby the footways 
+    #and inserting new attributes in the corssingways file
     gdf_crossing_ways = find_footways_close_to_crossing_ways(gdf_footways, gdf_crossing_ways)
     print("Find crossing ways that are close or touching cicleways : done ")
-    
     save_gdf(gdf_crossing_ways, path + "crossing_ways.json")
 
 
