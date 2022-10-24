@@ -6,6 +6,10 @@ import geopandas as gpd
 import pandas as pd
 import requests
 
+#this code import from OSM the data regarding footways 
+#and generates a filein the path of the graph database 
+#(but do not generates nodes in the database)
+
 class App:
     def __init__(self, uri, user, password):
         self.driver = GraphDatabase.driver(uri, auth=(user, password))
