@@ -21,6 +21,7 @@ class App:
 
     @staticmethod
     def _import_crossnodes(tx, file):
+        #import crossnodes from the local file
         result = tx.run("""
                         CALL apoc.load.json($file) YIELD value AS value 
                         WITH value.data AS data
@@ -72,15 +73,18 @@ def add_options():
 
 
 def main(args=None):
+    #connection to the graph instance
     argParser = add_options()
     options = argParser.parse_args(args=args)
     greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
-
+    
+    #generate nodes from the crossenodes in the local file
     start_time = time.time()
     greeter.import_crossnodes(options.file_name)
     print("import crossing_nodes.json: done")
     print("Execution time : %s seconds" % (time.time() - start_time))
 
+    #insert the crossnodes in the spatial layer
     start_time = time.time()
     greeter.import_crossnodes_in_spatial_layer()
     print("Import crossnodes in the spatial layer: done")
