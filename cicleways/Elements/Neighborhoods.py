@@ -4,6 +4,7 @@ import json
 import argparse
 import os
 
+#generation of the nodes of the neighbourhoods
 
 class App:
     def __init__(self, uri, user, password):
@@ -20,6 +21,8 @@ class App:
 
     @staticmethod
     def _import_neighborhood_node(tx, file):
+        #create one node for each neighbourhood defined in the local file
+        #insert hte WKT definition of its polygonal geometry inside the properties
         result = tx.run("""
                         CALL apoc.load.csv($file) YIELD map as lines 
                         MERGE(n:Neighborhood {id : lines.id}) ON CREATE SET n.geometry = lines.geometry;
@@ -35,6 +38,7 @@ class App:
 
     @staticmethod
     def _import_neighborhoods_in_spatial_layer(tx):
+        #inserting the neighbourhoods in the spatial layer
         result = tx.run("""
                        match(n:Neighborhood) with collect(n) as neighborhoods UNWIND neighborhoods AS nb 
                        CALL spatial.addNode('spatial', nb) yield node return node
@@ -65,14 +69,16 @@ def add_options():
 
 
 def main(args=None):
+    #connection to the graph instance
     argParser = add_options()
     options = argParser.parse_args(args=args)
     greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
-
-
+    
+    #generate a node for each neighborhood in the local file
     greeter.import_neighborhood_node(options.file_name)
     print("import QuartieriModena.csv: done")
-
+    
+    #insert the inserted nodes in the spatial layer
     greeter.import_neighborhoods_in_spatial_layer()
     print("Import neighborhood nodes in the spatial layer: done")
 
