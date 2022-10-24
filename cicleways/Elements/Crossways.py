@@ -5,6 +5,7 @@ import argparse
 import os
 import time
 
+#generate crossnodes from the crossnodes rerepsented as way in OSM and stored in a local file
 
 class App:
     def __init__(self, uri, user, password):
@@ -70,16 +71,18 @@ def add_options():
 
 
 def main(args=None):
+    #connection to the graph instance
     argParser = add_options()
     options = argParser.parse_args(args=args)
     greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
-
-
+    
+    #generate nodes from the crossenodes represented as ways in the local file
     start_time = time.time()
     greeter.import_crossways(options.file_name)
     print("import crossing_ways.json: done")
     print("Execution time : %s seconds" % (time.time() - start_time))
 
+    #insert the crossnodes in the spatial layer
     start_time = time.time()
     greeter.import_crossways_in_spatial_layer()
     print("Import crossways in the spatial layer: done")
