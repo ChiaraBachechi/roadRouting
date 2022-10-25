@@ -19,18 +19,23 @@ class App:
 
     @staticmethod
     def _filter_connections_between_cicleways_and_footways(tx):
+        #remove the direct connection between a cycleway node and a footway node 
+        #if there exists a connection through a footway in 2 to 4 hops
         result = tx.run("""
                             match (b:BicycleLane)-[r:CONTINUE_ON_CLOSE_FOOTWAY_BY_CROSSING_ROAD]->(f:Footway) 
                             with b, r, f match (b)-[:CONTINUE_ON_FOOTWAY*2..4]->(f) 
                             delete r  
                         """)
-
+        #remove the direct connection between a cycleway node and a footway node 
+        #if there exists a connection between the cycleway and the footway through 0 to 4 cycleway nodes and 1 to 4 footways
         result = tx.run("""
                             match (b:BicycleLane)-[r:CONTINUE_ON_CLOSE_FOOTWAY_BY_CROSSING_ROAD]->(f:Footway) 
                             with b, r, f match (b)-[:CONTINUE_ON_LANE*0..4]->(bi:BicycleLane)-[CONTINUE_ON_FOOTWAY*1..4]->(f:Footway) 
                             delete r  
                         """)
-
+        #remove the direct connection between a cycleway node and a close footway node 
+        #if there exists a connection between the cycleway and the footway through 0 to 4 cycleway nodes, 1 close footway, and 0 to 4 footways
+        #only in the case where the distance from the close footway is higher than the lenght of the relationship of the 1 close footway
         result = tx.run("""
                             match (b:BicycleLane)-[r:CONTINUE_ON_CLOSE_FOOTWAY_BY_CROSSING_ROAD]->(f:Footway) 
                             with b, r, f match (b)-[*0..4]-(bi:BicycleLane)-
@@ -39,7 +44,10 @@ class App:
                             where r.length > r1.length 
                             delete r 
                         """)
-
+        
+        #remove the direct connection between a cycleway node and a close footway node 
+        #if there exists a connection between the cycleway and the footway through 1 to 4 footway nodes, 1 footway by crossing the road, and 0 to 4 footways
+        #only in the case where the distance from the close footway is higher than the lenght of the relationship of the 1 footway reachable by corssing the road
         result = tx.run("""
                             match (b:BicycleLane)-[r:CONTINUE_ON_CLOSE_FOOTWAY_BY_CROSSING_ROAD]->(f:Footway) 
                             with b, r, f match (b)-[*1..4]-(fi:Footway)-
@@ -47,7 +55,9 @@ class App:
                             where r.length > r1.length 
                             delete r 
                         """)
-
+        #remove the direct connection between a cycleway node and a close footway node 
+        #if there exists a connection between the cycleway and the footway through 1 to 4 footway nodes, 1 cycleway by crossing the road, and 1 to 4 footways
+        #only in the case where the distance from the close footway is higher than the lenght of the relationship of the 1 cycleway reachable by crossing the road
         result = tx.run("""
                             match (b:BicycleLane)-[r:CONTINUE_ON_CLOSE_FOOTWAY_BY_CROSSING_ROAD]->(f:Footway) 
                             with b, r, f match (b)-[*1..4]-(fi:Footway)-
@@ -55,14 +65,16 @@ class App:
                             where r.length > r1.length 
                             delete r 
                         """)
-
+        #remove the direct connection between a cycleway node and a close footway node 
+        #if there exists a connection between the cycleway and the footway by crossing the road
         result = tx.run("""
                             match (b:BicycleLane)-[r:CONTINUE_ON_CLOSE_FOOTWAY_BY_CROSSING_ROAD]->(f:Footway) 
                             with b, r, f match (b)-[:CROSS_THE_ROAD]->(cr:Crossing)<-[:CROSS_THE_ROAD]-(f)
                             delete r 
                         """)
 
-        
+        #remove the direct connection between a footway node and a close cycleway node 
+        #if there exists a connection between the cycleway and the footway by crossing the road whose size is 0
         result = tx.run("""
                             match(f:Footway)-[r:CONTINUE_ON_CLOSE_LANE_BY_CROSSING_ROAD]->(b:BicycleLane)
                             with f, r, b match p=(b)-[:CONTINUE_ON_CLOSE_FOOTWAY_BY_CROSSING_ROAD]->(f) where size(relationships(p)) = 0 
@@ -90,10 +102,12 @@ def add_options():
 
 
 def main(args=None):
+    #connect to the neo4j instance
     argParser = add_options()
     options = argParser.parse_args(args=args)
     greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
     
+    #remove some connections between cycleways and footways that appear to be not necessary
     start_time = time.time()
     greeter.filter_connections_between_cicleways_and_footways()
     print("Filtering connections between cicleways and footways: done")
