@@ -100,6 +100,7 @@ def main(args=None):
     greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
     url = 'http://overpass-api.de/api/interpreter'
 
+
     #overpass query to get crossings mapped as nodes fro OSM
     query = createQueryCrossingNodes(dist, lat, lon)
 

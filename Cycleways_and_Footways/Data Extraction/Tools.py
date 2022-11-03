@@ -6,6 +6,7 @@ import geopandas as gpd
 def save_gdf(gdf, path, filename):
     """save the GeoPandas Dataframe in a json file"""
 
+
     gdf.to_crs(epsg=4326, inplace=True)
     df = pd.DataFrame(gdf)
     df['geometry'] = df['geometry'].astype(str)

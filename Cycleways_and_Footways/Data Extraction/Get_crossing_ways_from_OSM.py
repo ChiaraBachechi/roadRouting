@@ -7,6 +7,7 @@ import pandas as pd
 import requests
 from Tools import *
 
+
 class App:
     """In this file we are going to extract from OSM crossings mapped as ways"""
 
