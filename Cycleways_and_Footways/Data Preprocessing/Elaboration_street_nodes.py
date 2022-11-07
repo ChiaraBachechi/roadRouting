@@ -9,7 +9,9 @@ import json
 from shapely import wkt
 import osmnx as ox
 
-
+"""In this file we are going to make some preprocessing on street nodes in order to find 
+relationships between them and cycleways, footways and crossings 
+"""
 
 class App:
     def __init__(self, uri, user, password):
@@ -19,6 +21,8 @@ class App:
         self.driver.close()
 
     def get_path(self):
+        """gets the path of the neo4j instance"""
+
         with self.driver.session() as session:
             result = session.write_transaction(self._get_path)
             return result
@@ -31,6 +35,8 @@ class App:
         return result.values()
         
     def get_import_folder_name(self):
+        """gets the path of the import folder of the neo4j instance"""
+
         with self.driver.session() as session:
             result = session.write_transaction(self._get_import_folder_name)
             return result
@@ -43,6 +49,8 @@ class App:
         return result.values()
 
 def add_options():
+    """parameters to be used in order to run the script"""
+
     parser = argparse.ArgumentParser(description='Creation of routing graph.')
     parser.add_argument('--latitude', '-x', dest='lat', type=float,
                         help="""Insert latitude of city center""",
@@ -75,6 +83,8 @@ def add_options():
 
 
 def read_file(path):
+    """read the file specified by the path"""
+
     f = open(path)
     fjson = json.load(f)
     df = pd.DataFrame(fjson['data'])
@@ -85,6 +95,8 @@ def read_file(path):
 
 
 def bike_cross_cycleways(gdf_cycleways, nodes):
+    """Find the street nodes within cycling paths"""
+
     list_bike_cross = []
 
     for i in range(gdf_cycleways.shape[0]):
@@ -111,6 +123,8 @@ def bike_cross_cycleways(gdf_cycleways, nodes):
 
 
 def junction_cross_crossing_ways(gdf_crossing_ways, nodes):
+    """Find street nodes within crossing mapped as ways"""
+
     list_junction_cross = []
 
     for i in range(gdf_crossing_ways.shape[0]):
@@ -136,6 +150,10 @@ def junction_cross_crossing_ways(gdf_crossing_ways, nodes):
 
 
 def foot_cross(gdf_footways, nodes):
+    """Find street nodes within footways"""
+    nodes.to_crs(epsg=3035, inplace=True)
+    gdf_footways.to_crs(epsg=3035, inplace=True)
+
     list_foot_cross = []
 
     for i in range(gdf_footways.shape[0]):
@@ -143,9 +161,6 @@ def foot_cross(gdf_footways, nodes):
 
     gdf_footways['foot_cross'] = list_foot_cross
 
-
-    nodes.to_crs(epsg=3035, inplace=True)
-    gdf_footways.to_crs(epsg=3035, inplace=True)
 
     s = nodes['geometry'].buffer(2)
 
@@ -161,36 +176,27 @@ def foot_cross(gdf_footways, nodes):
 
 
 def save_gdf(gdf, path):
+    """
+    save the geopandas DataFrame in a json file
+    """
+
     gdf.to_crs(epsg=4326, inplace=True)
     df = pd.DataFrame(gdf)
     df['geometry'] = df['geometry'].astype(str)
     df.to_json(path + "cycleways.json", orient='table')
 
 
-
-
-def main(args=None):
-    argParser = add_options()
-    options = argParser.parse_args(args=args)
-    greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
-    path = greeter.get_path()[0][0] + '\\' + greeter.get_import_folder_name()[0][0] + '\\' 
-
+def preprocessing(gdf_cycleways, gdf_footways, gdf_crossing_ways, options):
     G_total = ox.graph_from_point((options.lat, options.lon),
-                            dist=int(options.dist),
-                            dist_type='bbox',
-                            simplify=False,
-                            network_type='all_private'
-                            )
+                                  dist=int(options.dist),
+                                  dist_type='bbox',
+                                  simplify=False,
+                                  network_type='all_private'
+                                  )
 
     nodes, edges = ox.graph_to_gdfs(G_total)
     nodes.reset_index(inplace=True)
 
-
-
-    gdf_cycleways = read_file(path + options.file_name_cycleways)
-    gdf_crossing_ways = read_file(path + options.file_name_crossing_ways)
-    gdf_footways = read_file(path + options.file_name_footways)
-    
     bike_cross_cycleways(gdf_cycleways, nodes)
     print("Creation of column bike_cross in gdf_cycleways GeoDataFrame : done")
 
@@ -201,10 +207,24 @@ def main(args=None):
     print("Creation of column bike_cross in gdf_crossing_ways GeoDataFrame : done")
 
 
+def main(args=None):
+    argParser = add_options()
+    options = argParser.parse_args(args=args)
+    greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
+    path = greeter.get_path()[0][0] + '\\' + greeter.get_import_folder_name()[0][0] + '\\'
+
+    gdf_cycleways = read_file(path + options.file_name_cycleways)
+    gdf_crossing_ways = read_file(path + options.file_name_crossing_ways)
+    gdf_footways = read_file(path + options.file_name_footways)
+
+
+    preprocessing(gdf_cycleways, gdf_footways, gdf_crossing_ways, options)
+
+
     save_gdf(gdf_cycleways, path + "cycleways.json")
     save_gdf(gdf_crossing_ways, path + "crossing_ways.json")
     save_gdf(gdf_footways, path + "footways.json")
 
 
 
-main()
+#main()

@@ -8,6 +8,9 @@ import numpy as np
 import json
 from shapely import wkt
 
+"""In this file we are going to make some preprocessing in order to find
+   relations between cycling paths and crossings mapped as ways
+"""
 
 class App:
     def __init__(self, uri, user, password):
@@ -17,6 +20,8 @@ class App:
         self.driver.close()
 
     def get_path(self):
+        """gets the path of the neo4j instance"""
+
         with self.driver.session() as session:
             result = session.write_transaction(self._get_path)
             return result
@@ -29,6 +34,8 @@ class App:
         return result.values()
         
     def get_import_folder_name(self):
+        """gets the path of the import folder of the neo4j instance"""
+
         with self.driver.session() as session:
             result = session.write_transaction(self._get_import_folder_name)
             return result
@@ -42,6 +49,8 @@ class App:
 
 
 def add_options():
+    """parameters to be used in order to run the script"""
+
     parser = argparse.ArgumentParser(description='Data elaboration of cycleways and crossing ways.')
     parser.add_argument('--neo4jURL', '-n', dest='neo4jURL', type=str,
                         help="""Insert the address of the local neo4j instance. For example: neo4j://localhost:7687""",
@@ -62,6 +71,8 @@ def add_options():
 
 
 def read_file(path):
+    """read the file specified by the path"""
+
     f = open(path)
     json_file = json.load(f)
     df = pd.DataFrame(json_file['data'])
@@ -72,27 +83,38 @@ def read_file(path):
 
 
 def find_cycleways_close_to_crossing_ways(gdf_cycleways, gdf_crossing_ways):
+    """Find the cycleways that are close to a signaled crossing mapped as a way"""
+
     gdf_crossing_ways.to_crs(epsg=3035, inplace=True)
 
-    s = gdf_cycleways['geometry']
     list_closest_lanes = []
+    for i in range(gdf_crossing_ways.shape[0]):
+        list_closest_lanes.append([])
 
-    for index, r in gdf_crossing_ways.iterrows(): 
-        
-        polygon = r['geometry']
-        l_dist = list(s.distance(polygon))
-        l1 = []
-        for i in range(len(l_dist)):
-            if l_dist[i] <= 2:
-                l1.append(gdf_cycleways.iloc[i].id_num)
-        list_closest_lanes.append(l1)
     gdf_crossing_ways['closest_lanes'] = list_closest_lanes
+
+    s = gdf_cycleways['geometry']
+
+
+    for index, r in gdf_crossing_ways.iterrows():
+        polygon = r['geometry']
+        l = list(s.sindex.query(polygon, predicate="intersects"))
+        for i in l:
+            gdf_crossing_ways[gdf_crossing_ways['id_num'] == r.id_num]['closest_lanes'].iloc[0].append(
+                gdf_cycleways.iloc[i].id_num)
+
+        l1 = list(s.sindex.query(polygon, predicate="touches"))
+        for i in l1:
+            gdf_crossing_ways[gdf_crossing_ways['id_num'] == r.id_num]['closest_lanes'].iloc[0].append(
+                gdf_cycleways.iloc[i].id_num)
 
     return gdf_crossing_ways
 
 
 
 def save_gdf(gdf, path):
+    """save the geopandas DataFrame in a json file"""
+
     gdf.to_crs(epsg=4326, inplace=True)
     df = pd.DataFrame(gdf)
     df['geometry'] = df['geometry'].astype(str)
@@ -117,4 +139,4 @@ def main(args=None):
 
 
 
-main()
+#main()

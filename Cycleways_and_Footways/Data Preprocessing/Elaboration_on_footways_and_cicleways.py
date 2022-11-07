@@ -9,7 +9,9 @@ import json
 from shapely import wkt
 from shapely.ops import unary_union
 
-
+"""In this file we are going to make some preprocessing in order to find
+   relations between cycling paths and pedestrian paths
+"""
 
 class App:
     def __init__(self, uri, user, password):
@@ -19,6 +21,8 @@ class App:
         self.driver.close()
 
     def get_path(self):
+        """gets the path of the neo4j instance"""
+
         with self.driver.session() as session:
             result = session.write_transaction(self._get_path)
             return result
@@ -31,6 +35,8 @@ class App:
         return result.values()
         
     def get_import_folder_name(self):
+        """gets the path of the import folder of the neo4j instance"""
+
         with self.driver.session() as session:
             result = session.write_transaction(self._get_import_folder_name)
             return result
@@ -44,6 +50,8 @@ class App:
 
 
 def add_options():
+    """parameters to be used in order to run the script"""
+
     parser = argparse.ArgumentParser(description='Data elaboration of footways and cycleways.')
     parser.add_argument('--neo4jURL', '-n', dest='neo4jURL', type=str,
                         help="""Insert the address of the local neo4j instance. For example: neo4j://localhost:7687""",
@@ -64,6 +72,8 @@ def add_options():
 
 
 def read_file(path):
+    """read the file specified by the path"""
+
     f = open(path)
     json_file = json.load(f)
     df = pd.DataFrame(json_file['data'])
@@ -74,7 +84,10 @@ def read_file(path):
 
 
 def find_cycleways_touching_and_close_to_footways(gdf_footways, gdf_cycleways):
-    
+    """Find cycleways and footways that touch or intersect each other or are reachable by crossing
+       the road where the crossing is not signaled.
+    """
+
     gdf_footways.to_crs(epsg=3035, inplace=True)
     gdf_cycleways.to_crs(epsg=3035, inplace=True)
 
@@ -95,12 +108,12 @@ def find_cycleways_touching_and_close_to_footways(gdf_footways, gdf_cycleways):
         
             if l_dist[i] == 0:
                 gdf_footways[gdf_footways['id_num'] == r.id_num]['touched_lanes'].iloc[0].append(gdf_cycleways.iloc[i].id_num)
-            elif l_dist[i] <= 9 and l_dist[i] > 0.5:
+            elif l_dist[i] <= 9 and l_dist[i] > 0:
                 gdf_footways[gdf_footways['id_num'] == r.id_num]['closest_lanes'].iloc[0].append((
                                                                 gdf_cycleways.iloc[i].id_num, l_dist[i]))
 
     
-
+"""
 def compute_distance(geom, footway, gdf_cycleways):
     dist = 0
     l_dist = []
@@ -164,17 +177,19 @@ def compute_footways_as_crossings(gdf_footways, gdf_cycleways):
                 compute_distance(geom, footway, gdf_cycleways)
         else:
             compute_distance(s, footway, gdf_cycleways)
-            
+"""
 
 
 
 
 
 def save_gdf(gdf, path):
+    """save the geopandas DataFrame in a json file"""
+
     gdf.to_crs(epsg=4326, inplace=True)
     df = pd.DataFrame(gdf)
     df['geometry'] = df['geometry'].astype(str)
-    df.to_json(path , orient='table')
+    df.to_json(path, orient='table')
 
 
 
@@ -191,12 +206,12 @@ def main(args=None):
     find_cycleways_touching_and_close_to_footways(gdf_footways, gdf_cycleways)
     print("Find the cycleways that touch the footways : done")
 
-    compute_footways_as_crossings(gdf_footways, gdf_cycleways)
-    print("Compute the footways that also act as crossings between cycleways : done")
+    #compute_footways_as_crossings(gdf_footways, gdf_cycleways)
+    #print("Compute the footways that also act as crossings between cycleways : done")
 
     save_gdf(gdf_footways, path + "footways.json")
     save_gdf(gdf_cycleways, path + "cycleways.json")
 
 
 
-main()
+#main()

@@ -8,6 +8,9 @@ import numpy as np
 import json
 from shapely import wkt
 
+"""In this file we are going to make some preprocessing in order to find
+   relations between cycling paths and crossings mapped as nodes
+"""
 
 class App:
     def __init__(self, uri, user, password):
@@ -17,6 +20,8 @@ class App:
         self.driver.close()
 
     def get_path(self):
+        """gets the path of the neo4j instance"""
+
         with self.driver.session() as session:
             result = session.write_transaction(self._get_path)
             return result
@@ -29,6 +34,8 @@ class App:
         return result.values()
         
     def get_import_folder_name(self):
+        """gets the path of the import folder of the neo4j instance"""
+
         with self.driver.session() as session:
             result = session.write_transaction(self._get_import_folder_name)
             return result
@@ -42,6 +49,8 @@ class App:
 
 
 def add_options():
+    """parameters to be used in order to run the script"""
+
     parser = argparse.ArgumentParser(description='Data elaboration of cycleways and crossing ways.')
     parser.add_argument('--neo4jURL', '-n', dest='neo4jURL', type=str,
                         help="""Insert the address of the local neo4j instance. For example: neo4j://localhost:7687""",
@@ -62,6 +71,8 @@ def add_options():
 
 
 def read_file(path):
+    """read the file specified by the path"""
+
     f = open(path)
     json_file = json.load(f)
     df = pd.DataFrame(json_file['data'])
@@ -72,6 +83,8 @@ def read_file(path):
 
 
 def find_cycleways_close_to_crossing_ways(gdf_cycleways, gdf_crossing_nodes):
+    """Find the cycleways that are close to a signaled crossing mapped as a nodes"""
+
     gdf_crossing_nodes.to_crs(epsg=3035, inplace=True)
     gdf_cycleways.to_crs(epsg=3035, inplace=True)
 
@@ -80,8 +93,6 @@ def find_cycleways_close_to_crossing_ways(gdf_cycleways, gdf_crossing_nodes):
         list_closest_lanes.append([])
 
     gdf_crossing_nodes['closest_lanes'] = list_closest_lanes
-
-
     s_cycleways = gdf_cycleways['geometry']
     
     for index, r in gdf_crossing_nodes.iterrows():    
@@ -94,6 +105,8 @@ def find_cycleways_close_to_crossing_ways(gdf_cycleways, gdf_crossing_nodes):
 
 
 def save_gdf(gdf, path):
+    """save the geopandas DataFrame in a json file"""
+
     gdf.to_crs(epsg=4326, inplace=True)
     df = pd.DataFrame(gdf)
     df['geometry'] = df['geometry'].astype(str)
@@ -118,4 +131,4 @@ def main(args=None):
 
 
 
-main()
+#main()

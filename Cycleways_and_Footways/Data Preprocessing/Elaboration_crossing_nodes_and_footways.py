@@ -9,6 +9,10 @@ import json
 from shapely import wkt
 
 
+"""In this file we are going to make some preprocessing in order to find
+   relations between pedestrian paths and crossings mapped as nodes
+"""
+
 class App:
     def __init__(self, uri, user, password):
         self.driver = GraphDatabase.driver(uri, auth=(user, password))
@@ -17,6 +21,8 @@ class App:
         self.driver.close()
 
     def get_path(self):
+        """gets the path of the neo4j instance"""
+
         with self.driver.session() as session:
             result = session.write_transaction(self._get_path)
             return result
@@ -29,6 +35,8 @@ class App:
         return result.values()
         
     def get_import_folder_name(self):
+        """gets the path of the import folder of the neo4j instance"""
+
         with self.driver.session() as session:
             result = session.write_transaction(self._get_import_folder_name)
             return result
@@ -62,6 +70,8 @@ def add_options():
 
 
 def read_file(path):
+    """read the file specified by the path"""
+
     f = open(path)
     json_file = json.load(f)
     df = pd.DataFrame(json_file['data'])
@@ -71,7 +81,9 @@ def read_file(path):
     return gdf
 
 
-def find_footways_close_to_crossing_ways(gdf_footways, gdf_crossing_nodes):
+def find_footways_close_to_crossing_nodes(gdf_footways, gdf_crossing_nodes):
+    """Find the footways that are close to a signaled crossing mapped as a nodes"""
+
     gdf_crossing_nodes.to_crs(epsg=3035, inplace=True)
     gdf_footways.to_crs(epsg=3035, inplace=True)
 
@@ -81,19 +93,21 @@ def find_footways_close_to_crossing_ways(gdf_footways, gdf_crossing_nodes):
 
     gdf_crossing_nodes['closest_footways'] = list_closest_footways
 
-
-    s_cycleways = gdf_footways['geometry']
-
-    for index, r in gdf_crossing_nodes.iterrows():    
+    s = gdf_footways['geometry']
+    print(s)
+    for index, r in gdf_crossing_nodes.iterrows():
         polygon = r['geometry'].buffer(10)
-        l = list(s_cycleways.sindex.query(polygon, predicate="intersects"))
-        for i in l:
-            gdf_crossing_nodes[gdf_crossing_nodes['id_num'] == r.id_num]['closest_footways'].iloc[0].append(gdf_footways.iloc[i].id_num)
-    
-
+        print(polygon)
+        print(index)
+        l1 = list(s.sindex.query(polygon, predicate="intersects"))
+        for i in l1:
+            gdf_crossing_nodes[gdf_crossing_nodes['id_num'] == r.id_num]['closest_footways'].iloc[0].append(
+                gdf_footways.iloc[i].id_num)
 
 
 def save_gdf(gdf, path):
+    """save the geopandas DataFrame in a json file"""
+
     gdf.to_crs(epsg=4326, inplace=True)
     df = pd.DataFrame(gdf)
     df['geometry'] = df['geometry'].astype(str)
@@ -111,11 +125,11 @@ def main(args=None):
     gdf_footways = read_file(path + options.file_name_cycleways)
     gdf_crossing_nodes = read_file(path + options.file_name_crossings)
     
-    find_footways_close_to_crossing_ways(gdf_footways, gdf_crossing_nodes)
+    find_footways_close_to_crossing_nodes(gdf_footways, gdf_crossing_nodes)
     print("Find crossing ways that are close or touching cycleways : done ")
     
     save_gdf(gdf_crossing_nodes, path + "crossing_nodes.json")
 
 
 
-main()
+#main()
