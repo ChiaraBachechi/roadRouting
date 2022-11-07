@@ -5,6 +5,7 @@ import argparse
 import os
 import time
 
+"""In this file we are going to show how to generate nodes referring to signaled crossings mapped on OSM as nodes"""
 
 class App:
     def __init__(self, uri, user, password):
@@ -15,6 +16,8 @@ class App:
 
 
     def import_crossnodes(self, file):
+        """Import crossing nodes data on Neo4j and generate Crossnode nodes"""
+
         with self.driver.session() as session:
             result = session.write_transaction(self._import_crossnodes, file)
             return result
@@ -35,21 +38,25 @@ class App:
         return result.values()
 
     def compute_location(self, file):
+        """Compute the attribute location on nodes"""
+
         with self.driver.session() as session:
             result = session.write_transaction(self._compute_location, file)
             return result
 
     @staticmethod
-    def _compute_location(tx, file):
+    def _compute_location(tx):
         result = tx.run("""
                             match(cr:CrossNode) set cr.location = point({latitude:cr.bbox[1], longitude:cr.bbox[0]})
-                        """, file=file)
+                        """)
 
         return result.values()
 
 
     def import_crossnodes_in_spatial_layer(self):
-         with self.driver.session() as session:
+        """Import CrossNode nodes on a Neo4j Spatial layer"""
+
+        with self.driver.session() as session:
             result = session.write_transaction(self._import_crossnodes_in_spatial_layer)
             return result
 
@@ -69,6 +76,8 @@ class App:
 
 
 def add_options():
+    """Parameters needed to run the script"""
+
     parser = argparse.ArgumentParser(description='Insertion of POI in the graph.')
     parser.add_argument('--neo4jURL', '-n', dest='neo4jURL', type=str,
                         help="""Insert the address of the local neo4j instance. For example: neo4j://localhost:7687""",
@@ -86,20 +95,25 @@ def add_options():
 
 
 def main(args=None):
+
+    """Parsing input parameters"""
     argParser = add_options()
     options = argParser.parse_args(args=args)
     greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
 
+    """Import crossing nodes data on Neo4j and generate Crossnode nodes"""
     start_time = time.time()
     greeter.import_crossnodes(options.file_name)
     print("import crossing_nodes.json: done")
     print("Execution time : %s seconds" % (time.time() - start_time))
 
+    """Compute the location attribute on the nodes"""
     start_time = time.time()
     greeter.compute_location()
     print("Compute the location of the nodes: done")
     print("Execution time : %s seconds" % (time.time() - start_time))
 
+    """Import CrossNode nodes on a Neo4j Spatial Layer"""
     start_time = time.time()
     greeter.import_crossnodes_in_spatial_layer()
     print("Import crossnodes in the spatial layer: done")

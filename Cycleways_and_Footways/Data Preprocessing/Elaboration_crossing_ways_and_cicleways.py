@@ -125,14 +125,18 @@ def save_gdf(gdf, path):
 
 
 def main(args=None):
+
+    """Parsing input parameters"""
     argParser = add_options()
     options = argParser.parse_args(args=args)
     greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
-    path = greeter.get_path()[0][0] + '\\' + greeter.get_import_folder_name()[0][0] + '\\' 
+    path = greeter.get_path()[0][0] + '\\' + greeter.get_import_folder_name()[0][0] + '\\'
 
+    """Read the content of the json files and store it in a geodataframe"""
     gdf_cycleways = read_file(path + options.file_name_cycleways)
     gdf_crossing_ways = read_file(path + options.file_name_crossings)
-    
+
+    """Find relationships between cycleways and crossings mapped as ways"""
     gdf_crossing_ways = find_cycleways_close_to_crossing_ways(gdf_cycleways, gdf_crossing_ways)
     print("Find crossing ways that are close or touching cycleways : done ")
     

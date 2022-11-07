@@ -4,6 +4,10 @@ import json
 import argparse
 import os
 
+"""In this file we are going to show how to connect Neighborhood nodes with all the other kind of nodes we have
+   within the Neo4j database instance
+"""
+
 class App:
     def __init__(self, uri, user, password):
         self.driver = GraphDatabase.driver(uri, auth=(user, password))
@@ -12,7 +16,8 @@ class App:
         self.driver.close()
 
     def elements_within_neighborhoods(self):
-         with self.driver.session() as session:
+        """Look for all the nodes representing elements that lie within a neighborhood"""
+        with self.driver.session() as session:
             result = session.write_transaction(self._elements_within_neighborhoods)
             return result
 
@@ -32,6 +37,7 @@ class App:
 
 
 def add_options():
+    """Parameters needed to run the script"""
     parser = argparse.ArgumentParser(description='Insertion of POI in the graph.')
     parser.add_argument('--neo4jURL', '-n', dest='neo4jURL', type=str,
                         help="""Insert the address of the local neo4j instance. For example: neo4j://localhost:7687""",
@@ -47,10 +53,14 @@ def add_options():
 
 
 def main(args=None):
+    """Parsing parameters"""
     argParser = add_options()
     options = argParser.parse_args(args=args)
     greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
 
+    """Find all the nodes representing elements that lie within a neighborhood and connect the with the corresponding
+       Neighborhood node
+    """
     greeter.elements_within_neighborhoods()
     print("Connect to the right neighborhood elements within it: done")
 

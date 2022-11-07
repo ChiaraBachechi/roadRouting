@@ -3,6 +3,9 @@ import argparse
 from neo4j import GraphDatabase
 import os
 
+"""In this file we are going to show how to generate nodes representing the street nodes within 
+   footways and crossings
+"""
 
 class App:
     def __init__(self, uri, user, password):
@@ -12,6 +15,7 @@ class App:
         self.driver.close()
 
     def creation_graph(self, file):
+        """Import street nodes data on Neo4j as a graph"""
         with self.driver.session() as session:
             result = session.write_transaction(self._creation_graph, file)
             return result
@@ -24,6 +28,7 @@ class App:
         return result.values()
 
     def get_path(self):
+        """gets the path of the neo4j instance"""
         with self.driver.session() as session:
             result = session.write_transaction(self._get_path)
             return result
@@ -36,6 +41,7 @@ class App:
         return result.values()
         
     def get_import_folder_name(self):
+        """get the path of the import folder of the current Neo4j database instance"""
         with self.driver.session() as session:
             result = session.write_transaction(self._get_import_folder_name)
             return result
@@ -48,24 +54,26 @@ class App:
         return result.values()
 
     def set_label(self):
+        """Set the label of the nodes"""
         with self.driver.session() as session:
-            result = session.write_transaction(self._creation_label)
+            result = session.write_transaction(self._set_label)
             return result
 
     @staticmethod
-    def _creation_label(tx):
+    def _set_label(tx):
         result = tx.run("""
                         MATCH(n)-[:FOOT_ROUTE]->(n1) set n:JunctionFootCross, n1:JunctionFootCross;
                     """)
         return result.values()
 
     def set_location(self):
+        """Set the location attribute on the nodes"""
         with self.driver.session() as session:
-            result = session.write_transaction(self._creation_location)
+            result = session.write_transaction(self._set_location)
             return result
 
     @staticmethod
-    def _creation_location(tx):
+    def _set_location(tx):
         result = tx.run("""
                            match(n:JunctionFootCross) set n.geometry = "POINT(" + n.x + " " + n.y + ")", 
                            n.location = point({latitude: tofloat(n.y), longitude: tofloat(n.x)}),n.lat = tofloat(n.y), n.lon = tofloat(n.x);
@@ -73,6 +81,7 @@ class App:
         return result.values()
 
     def set_distance(self):
+        """Set the distance attribute on the relationships"""
         with self.driver.session() as session:
             result = session.write_transaction(self._set_distance)
             return result
@@ -85,6 +94,7 @@ class App:
         return result.values()
     
     def set_index(self):
+        """Create a new index on the osm is of the nodes"""
         with self.driver.session() as session:
             result = session.write_transaction(self._set_index)
             return result
@@ -98,6 +108,7 @@ class App:
 
 
 def add_options():
+    """Parameters needed to run the script"""
     parser = argparse.ArgumentParser(description='Creation of routing graph.')
     parser.add_argument('--latitude', '-x', dest='lat', type=float,
                         help="""Insert latitude of city center""",
@@ -124,11 +135,12 @@ def add_options():
 
 
 def main(args=None):
+    """Parsing parameters"""
     argParser = add_options()
     options = argParser.parse_args(args=args)
     greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
 
-
+    """Generation of the footways subgraph nodes"""
     greeter.creation_graph(options.file_name)
     greeter.set_label()
     greeter.set_location()

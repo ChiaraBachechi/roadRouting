@@ -6,6 +6,7 @@ import argparse
 import os
 import time
 
+"""In this file we are going to show how subgraph footways layer nodes are generated"""
 
 class App:
     def __init__(self, uri, user, password):
@@ -15,6 +16,7 @@ class App:
         self.driver.close()
 
     def connect_junctions_to_footways(self, file):
+        """Connect street nodes with their corresponding footway"""
         with self.driver.session() as session:
             result = session.write_transaction(self._connect_junctions_to_footways, file)
             return result
@@ -38,6 +40,7 @@ class App:
 
 
     def connect_junctions_to_crossings(self, file):
+        """Connect street nodes with their corresponding crossing (both node and way)"""
         with self.driver.session() as session:
             result = session.write_transaction(self._connect_junctions_to_crossings, file)
             return result
@@ -70,6 +73,7 @@ class App:
         return result.values()
 
     def change_of_labels(self):
+        """Change the label of the street nodes connected to Footways and Crossings and set new indexes"""
         with self.driver.session() as session:
             result = session.write_transaction(self._change_of_labels)
             return result
@@ -126,6 +130,7 @@ class App:
 
 
     def connect_to_road_junctions(self):
+        """Connect the street nodes to the junctions nodes of the Road Layer"""
         with self.driver.session() as session:
             result = session.write_transaction(self._connect_to_road_junctions)
             return result
@@ -191,6 +196,7 @@ class App:
 
 
     def import_footcrosses_into_spatial_layer(self):
+        """Import subgraph footways layer nodes in a Neo4j Spatial Layer"""
         with self.driver.session() as session:
             result = session.write_transaction(self._import_footcrosses_into_spatial_layer)
             return result
@@ -218,6 +224,7 @@ class App:
 
 
 def add_options():
+    """Parameters nedeed to run the script"""
     parser = argparse.ArgumentParser(description='Insertion of POI in the graph.')
     parser.add_argument('--neo4jURL', '-n', dest='neo4jURL', type=str,
                         help="""Insert the address of the local neo4j instance. For example: neo4j://localhost:7687""",
@@ -238,22 +245,28 @@ def add_options():
 
 
 def main(args=None):
+    """Parsing input parameters"""
     argParser = add_options()
     options = argParser.parse_args(args=args)
     greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
 
+    """Connect street nodes with the corresponding footways"""
     greeter.connect_junctions_to_footways(options.file_name_footways)
     print("Connecting junction bike cross to cycleways : done")
 
+    """Connect street nodes with the corresponding crossings"""
     greeter.connect_junctions_to_crossings(options.file_name_crossing_ways)
     print("Connecting junction bike cross to crossings : done")
 
+    """Change the label of the street nodes according to which element they are within"""
     greeter.change_of_labels()
     print("Change the labels of JunctionBikeCross in BikeCross : done")
 
+    """Connect subgraph footways layer to the Road junction layer"""
     greeter.connect_to_road_junctions()
     print("Connect foot and road foot cross to road junctions : done")
 
+    """Import subgraph cycleways layer nodes in the Neo4j Spatial Layer"""
     greeter.import_footcrosses_into_spatial_layer()
     print("Import the bike crosses into the spatial layer : done")
 

@@ -62,6 +62,7 @@ def main(args=None):
     and save them within json files
     """
 
+    """Parsing input parameters"""
     argParser = add_options()
     options = argParser.parse_args(args=args)
     dist = options.dist
@@ -70,18 +71,22 @@ def main(args=None):
     greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
     url = 'http://overpass-api.de/api/interpreter'
 
+    """Generate overpass query to fetch footways data and extract them"""
     queryFootways = createQueryFootways(dist, lat, lon)
     getData(url, queryFootways, greeter, "way/", "LineString", "footways.json")
     print("Extracting footways data : done")
-    
+
+    """Generate overpass query to fetch crossing nodes data and extract them"""
     queryCrossNodes = createQueryCrossingNodes(dist, lat, lon)
     getData(url, queryCrossNodes, greeter, "node/", "Point", "crossingnodes.json")
     print("Extracting crossing nodes data : done")
 
+    """Generate overpass query to fetch crossing ways data and extract them"""
     queryCrossWays = createQueryCrossingWays(dist, lat, lon)
     getData(url, queryCrossWays, greeter, "way/", "LineString", "crossingways.json")
     print("Extracting crossing ways data : done")
 
+    """Extrct street nodes data from OSM"""
     getStreetNodes(dist, lat, lon, greeter, options.file_name)
     print("Extracting street nodes : done")
 

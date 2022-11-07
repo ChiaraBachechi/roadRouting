@@ -209,19 +209,20 @@ def preprocessing(gdf_cycleways, gdf_footways, gdf_crossing_ways, options):
 
 
 def main(args=None):
+
+    """Parsing input parameters"""
     argParser = add_options()
     options = argParser.parse_args(args=args)
     greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
     path = greeter.get_path()[0][0] + '\\' + greeter.get_import_folder_name()[0][0] + '\\'
 
+    """Read the content of the json file, store it in a geodataframe and apply the preprocessing"""
     gdf_cycleways = read_file(path + options.file_name_cycleways)
     gdf_crossing_ways = read_file(path + options.file_name_crossing_ways)
     gdf_footways = read_file(path + options.file_name_footways)
-
-
     preprocessing(gdf_cycleways, gdf_footways, gdf_crossing_ways, options)
 
-
+    """Store the results in json files"""
     save_gdf(gdf_cycleways, path + "cycleways.json")
     save_gdf(gdf_crossing_ways, path + "crossing_ways.json")
     save_gdf(gdf_footways, path + "footways.json")

@@ -5,6 +5,7 @@ import argparse
 import os
 import time
 
+"""In this file we are going to show how to generate nodes referring to cycling paths"""
 
 class App:
     def __init__(self, uri, user, password):
@@ -15,6 +16,8 @@ class App:
 
 
     def import_bicycle_lanes(self, file):
+        """Import cycling paths data on Neo4j and generate BicycleLane nodes"""
+
         with self.driver.session() as session:
             result = session.write_transaction(self._import_bicycle_lanes, file)
             return result
@@ -37,7 +40,9 @@ class App:
 
 
     def import_lanes_in_spatial_layer(self):
-         with self.driver.session() as session:
+        """Import BicycleLane nodes on a Neo4j spatial layer """
+
+        with self.driver.session() as session:
             result = session.write_transaction(self._import_lanes_in_spatial_layer)
             return result
 
@@ -51,22 +56,23 @@ class App:
 
 
     def add_index(self):
-         with self.driver.session() as session:
+        """Add an index to the numeric id"""
+
+        with self.driver.session() as session:
             result = session.write_transaction(self._add_index)
             return result
 
     @staticmethod
     def _add_index(tx):
-        result = tx.run("""
-                       create index cycleway_index for (b:BicycleLane) on (b.id_num)
-        """)
-                        
+        result = tx.run("""create index cycleway_index for (b:BicycleLane) on (b.id_num)""")
         return result.values()    
 
 
 
     def find_touched_lanes(self):
-         with self.driver.session() as session:
+        """Generate relationships between nodes representing cycleways that touch or intersect"""
+
+        with self.driver.session() as session:
             result = session.write_transaction(self._find_touched_lanes)
             return result
 
@@ -88,7 +94,11 @@ class App:
 
     
     def find_closest_lanes(self, file):
-         with self.driver.session() as session:
+        """Generate relationships between nodes representing cycleways that are reachable by crossing
+           the road where the crossing is not signaled
+        """
+
+        with self.driver.session() as session:
             result = session.write_transaction(self._find_closest_lanes, file)
             return result
 
@@ -108,6 +118,8 @@ class App:
 
 
 def add_options():
+    """Parameters needed to run the script"""
+
     parser = argparse.ArgumentParser(description='Insertion of POI in the graph.')
     parser.add_argument('--neo4jURL', '-n', dest='neo4jURL', type=str,
                         help="""Insert the address of the local neo4j instance. For example: neo4j://localhost:7687""",
@@ -125,30 +137,40 @@ def add_options():
 
 
 def main(args=None):
+
+    """Parsing parameters in input"""
     argParser = add_options()
     options = argParser.parse_args(args=args)
     greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
 
+    """Import cycleways data on Neo4j and generate BicycleLane nodes"""
     start_time = time.time()
     greeter.import_bicycle_lanes(options.file_name)
     print("import cycleways_total.json: done")
     print("Execution time : %s seconds" % (time.time() - start_time))
 
+    """Import BicycleLane nodes on Neo4j Spatial Layer"""
     start_time = time.time()
     greeter.import_lanes_in_spatial_layer()
     print("Import the cycleways in the spatial layer: done")
     print("Execution time : %s seconds" % (time.time() - start_time))
 
+
+    """Add an index on the numeric id attribute"""
     start_time = time.time()
     greeter.add_index()
     print("Add an index on the id_num : done")
     print("Execution time : %s seconds" % (time.time() - start_time))
 
+    """Generate relationships between nodes representing cycleways that touch or intersect"""
     start_time = time.time()
     greeter.find_touched_lanes()
     print("Find the lanes that touches each other: done")
     print("Execution time : %s seconds" % (time.time() - start_time))
 
+    """Generate relationships between nodes representing cycleways that are reachable by crossing the road where
+       the crossing is not signaled
+    """
     start_time = time.time()
     greeter.find_closest_lanes(options.file_name)
     print('Find the lanes that are close to each other: done')

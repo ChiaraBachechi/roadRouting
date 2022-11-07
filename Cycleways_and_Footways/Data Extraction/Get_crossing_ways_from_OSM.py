@@ -94,6 +94,8 @@ def createQueryCrossingWays(dist, lat, lon):
     
 
 def main(args=None):
+
+    """Parsing of input parameters"""
     argParser = add_options()
     options = argParser.parse_args(args=args)
     dist = options.dist
@@ -102,9 +104,10 @@ def main(args=None):
     greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
     url = 'http://overpass-api.de/api/interpreter'
 
-    #overpass query to get crossings mapped as nodes fro OSM
+    """overpass query to get crossings mapped as nodes fro OSM"""
     query = createQueryCrossingWays(dist, lat, lon)
 
+    """Crossing ways extraction and generation of the GeoDataframe"""
     result = requests.get(url, params={'data': query})
     data = result.json()['elements']
     features = [elem_to_feature(elem, "LineString") for elem in data]
@@ -115,6 +118,8 @@ def main(args=None):
 
     path = greeter.get_path()[0][0] + '\\' + greeter.get_import_folder_name()[0][0] + '\\'
 
+
+    """Save the GeoDataframe in a json file"""
     save_gdf(gdf, path, "crossing_ways.json")
     print("Storing crossing ways: done")
     return 0

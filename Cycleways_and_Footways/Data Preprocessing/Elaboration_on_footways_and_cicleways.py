@@ -196,11 +196,14 @@ def save_gdf(gdf, path):
 
 
 def main(args=None):
+
+    """Parsing input parameters"""
     argParser = add_options()
     options = argParser.parse_args(args=args)
     greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
-    path = greeter.get_path()[0][0] + '\\' + greeter.get_import_folder_name()[0][0] + '\\' 
+    path = greeter.get_path()[0][0] + '\\' + greeter.get_import_folder_name()[0][0] + '\\'
 
+    """Read the content of the json file, store it in a geodataframe and apply the preprocessing"""
     gdf_footways = read_file(path + options.file_name_footways)
     gdf_cycleways = read_file(path + options.file_name_cycleways)
 

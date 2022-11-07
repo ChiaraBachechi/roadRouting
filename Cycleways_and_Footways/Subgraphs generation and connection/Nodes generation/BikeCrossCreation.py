@@ -6,6 +6,7 @@ import argparse
 import os
 import time
 
+"""In this file we are going to show how subgraph cycleways layer nodes are generated"""
 
 class App:
     def __init__(self, uri, user, password):
@@ -15,17 +16,13 @@ class App:
         self.driver.close()
 
     def connect_junctions_to_cycleways(self, file):
+        """Connect street nodes with their corresponding cycleway"""
         with self.driver.session() as session:
             result = session.write_transaction(self._connect_junctions_to_cycleways, file)
             return result
 
     @staticmethod
     def _connect_junctions_to_cycleways(tx, file):
-        tx.run("""
-                call apoc.load.json("cycleways_total.json") yield value as value with value.data as data 
-                unwind data as record match(b:BicycleLane) where b.id_num = "cycleway/" + apoc.convert.toString(record.id_num) 
-                set b.bike_crosses = record.bike_cross;
-                """, file=file)
 
         tx.run("""
                 match(b:BicycleLane) unwind b.bike_crosses as bike_cross with b, bike_cross match(bk:JunctionBikeCross) 
@@ -39,6 +36,7 @@ class App:
 
 
     def connect_junctions_to_crossings(self, file):
+        """Connect street nodes with their corresponding crossing (both node and way)"""
         with self.driver.session() as session:
             result = session.write_transaction(self._connect_junctions_to_crossings, file)
             return result
@@ -70,6 +68,7 @@ class App:
         return result.values()
 
     def change_of_labels(self):
+        """Change the label of the street nodes connected to Cycleways and Crossings and set new indexes"""
         with self.driver.session() as session:
             result = session.write_transaction(self._change_of_labels)
             return result
@@ -129,6 +128,7 @@ class App:
 
 
     def connect_to_road_junctions(self):
+        """Connect the street nodes to the junctions nodes of the Road Layer"""
         with self.driver.session() as session:
             result = session.write_transaction(self._connect_to_road_junctions)
             return result
@@ -197,6 +197,7 @@ class App:
 
 
     def import_bikecrosses_into_spatial_layer(self):
+        """Import subgraph cycleways layer nodes in a Neo4j Spatial Layer"""
         with self.driver.session() as session:
             result = session.write_transaction(self._import_bikecrosses_into_spatial_layer)
             return result
@@ -224,6 +225,7 @@ class App:
 
 
 def add_options():
+    """Parameters needed to run the script"""
     parser = argparse.ArgumentParser(description='Insertion of POI in the graph.')
     parser.add_argument('--neo4jURL', '-n', dest='neo4jURL', type=str,
                         help="""Insert the address of the local neo4j instance. For example: neo4j://localhost:7687""",
@@ -244,22 +246,28 @@ def add_options():
 
 
 def main(args=None):
+    """Parsing input parameters"""
     argParser = add_options()
     options = argParser.parse_args(args=args)
     greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
 
+    """Connect street nodes with the corresponding cycleways"""
     greeter.connect_junctions_to_cycleways(options.file_name_cycleways)
     print("Connecting junction bike cross to cycleways : done")
 
+    """Connect street nodes with the corresponding crossings"""
     greeter.connect_junctions_to_crossings(options.file_name_crossing_ways)
     print("Connecting junction bike cross to crossings : done")
 
+    """Change the label of the street nodes according to which element they are within"""
     greeter.change_of_labels()
     print("Change the labels of JunctionBikeCross in BikeCross : done")
 
+    """Connect subgraph cycleways layer to the Road junction layer"""
     greeter.connect_to_road_junctions()
     print("Connect bike cross and road bike cross junctions to road junctions and delete road bike junctions : done")
 
+    """Import subgraph cycleways layer nodes in the Neo4j Spatial Layer"""
     greeter.import_bikecrosses_into_spatial_layer()
     print("Import the bike crosses into the spatial layer : done")
 

@@ -4,6 +4,7 @@ import json
 import argparse
 import os
 
+"""In this file we are going to show hoe to generate nodes representing neighborhoods"""
 
 class App:
     def __init__(self, uri, user, password):
@@ -14,6 +15,7 @@ class App:
 
 
     def import_neighborhood_node(self, file):
+        """Import neighborhoods data on Neo4j and generate Neighborhood nodes"""
         with self.driver.session() as session:
             result = session.write_transaction(self._import_neighborhood_node, file)
             return result
@@ -29,7 +31,8 @@ class App:
 
     
     def import_neighborhoods_in_spatial_layer(self):
-         with self.driver.session() as session:
+        """Import Neighborhood nodes on a Neo4j Spatial Layer"""
+        with self.driver.session() as session:
             result = session.write_transaction(self._import_neighborhoods_in_spatial_layer)
             return result
 
@@ -48,6 +51,7 @@ class App:
 
 
 def add_options():
+    """Parameters needed to run the script"""
     parser = argparse.ArgumentParser(description='Insertion of POI in the graph.')
     parser.add_argument('--neo4jURL', '-n', dest='neo4jURL', type=str,
                         help="""Insert the address of the local neo4j instance. For example: neo4j://localhost:7687""",
@@ -65,14 +69,16 @@ def add_options():
 
 
 def main(args=None):
+    """Parsing input parameters"""
     argParser = add_options()
     options = argParser.parse_args(args=args)
     greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
 
-
+    """Import neighborhoods data on Neo4j and generate Neighborhood nodes"""
     greeter.import_neighborhood_node(options.file_name)
     print("import QuartieriModena.csv: done")
 
+    """Import Neighborhood nodes on a Neo4j Spatial Layer"""
     greeter.import_neighborhoods_in_spatial_layer()
     print("Import neighborhood nodes in the spatial layer: done")
 

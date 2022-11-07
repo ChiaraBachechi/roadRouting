@@ -6,6 +6,7 @@ import argparse
 import os
 import time
 
+"""In this file we are going to show how to connect the cycleways layer with the footways layer"""
 
 class App:
     def __init__(self, uri, user, password):
@@ -15,6 +16,7 @@ class App:
         self.driver.close()
 
     def connect_junctions_of_different_layers(self):
+        """Connect different layers subgraph nodes"""
         with self.driver.session() as session:
             result = session.write_transaction(self._connect_junctions_of_different_layers)
             return result
@@ -64,6 +66,7 @@ class App:
 
 
     def delete_roadjunctions_with_same_location_of_footcrosses(self):
+        """Delete RoadBikeJunction nodes that are mapped as the same elements of FootCross and JunctionFootCross nodes"""
         with self.driver.session() as session:
             result = session.write_transaction(self._delete_roadjunctions_with_same_location_of_footcrosses)
             return result
@@ -79,7 +82,8 @@ class App:
 
                 
         tx.run("""
-                MATCH(jfc:JunctionFootCross)-[:IS_CONTAINED]->(n) with jfc MATCH(rj:RoadBikeJunction) where rj.location = jfc.location detach delete rj;
+                MATCH(jfc:JunctionFootCross)-[:IS_CONTAINED]->(n) with jfc MATCH(rj:RoadBikeJunction) 
+                where rj.location = jfc.location detach delete rj;
                 """)
                 
         tx.run("""
@@ -92,6 +96,7 @@ class App:
 
 
     def change_labels(self):
+        """Add the label Junction to all the subgraph nodes"""
         with self.driver.session() as session:
             result = session.write_transaction(self._change_labels)
             return result
@@ -135,6 +140,7 @@ class App:
 
 
 def add_options():
+    """Parameters needed to run the script"""
     parser = argparse.ArgumentParser(description='Insertion of POI in the graph.')
     parser.add_argument('--neo4jURL', '-n', dest='neo4jURL', type=str,
                         help="""Insert the address of the local neo4j instance. For example: neo4j://localhost:7687""",
@@ -149,20 +155,22 @@ def add_options():
 
 
 def main(args=None):
+    """Parsing input parameters"""
     argParser = add_options()
     options = argParser.parse_args(args=args)
     greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
 
+    """Connect different layers through their subgraphs"""
     greeter.connect_junctions_of_different_layers()
     print("Connect junctions of different layers : done")
 
+    """Delete RoadBikeJunction nodes that are mapped as the same elements of FootCross and JunctionFootCross nodes"""
     greeter.delete_roadjunctions_with_same_location_of_footcrosses()
     print("Delete the road junctions that have the same location of footways that are not linked to cycleways : done")
 
+    """Add the label Junction to all the subgraph nodes"""
     greeter.change_labels()
     print("Make a final change of labels : done")
-
-
 
     return 0
 

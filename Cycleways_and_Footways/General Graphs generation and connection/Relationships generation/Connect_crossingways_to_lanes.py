@@ -5,6 +5,8 @@ import argparse
 import os
 import time
 
+"""In this file we are going to how to connect BicycleLane and CrossWay nodes"""
+
 class App:
     def __init__(self, uri, user, password):
         self.driver = GraphDatabase.driver(uri, auth=(user, password))
@@ -13,6 +15,7 @@ class App:
         self.driver.close()
 
     def connect_crossways_to_bicycle_lanes(self):
+        """Generate relationships between BicycleLane and CrossWay nodes"""
         with self.driver.session() as session:
             result = session.write_transaction(self._connect_crossways_to_bicycle_lanes)
             return result
@@ -35,6 +38,7 @@ class App:
 
 
 def add_options():
+    """Parameters needed to run the script"""
     parser = argparse.ArgumentParser(description='Insertion of POI in the graph.')
     parser.add_argument('--neo4jURL', '-n', dest='neo4jURL', type=str,
                         help="""Insert the address of the local neo4j instance. For example: neo4j://localhost:7687""",
@@ -49,10 +53,12 @@ def add_options():
 
 
 def main(args=None):
+    """Parsing parameters"""
     argParser = add_options()
     options = argParser.parse_args(args=args)
     greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
 
+    """Generate relationships between BicycleLane and CrossWay nodes"""
     start_time = time.time()
     greeter.connect_crossways_to_bicycle_lanes()
     print("Connect lanes to the crossing ways: done")

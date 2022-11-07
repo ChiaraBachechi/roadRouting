@@ -89,6 +89,8 @@ def createQueryFootways(dist, lat, lon):
 
 
 def main(args=None):
+
+    """Parsing of input parameters"""
     argParser = add_options()
     options = argParser.parse_args(args=args)
     dist = options.dist
@@ -98,9 +100,11 @@ def main(args=None):
     url = 'http://overpass-api.de/api/interpreter'
 
 
-    #overpass query to get crossings mapped as nodes fro OSM
+    """overpass query to get crossings mapped as nodes fro OSM"""
     query = createQueryFootways(dist, lat, lon)
 
+
+    """Crossing ways extraction and generation of the GeoDataframe"""
     result = requests.get(url, params={'data': query})
     data = result.json()['elements']
     features = [elem_to_feature(elem, "LineString") for elem in data]
@@ -109,7 +113,9 @@ def main(args=None):
     gdf.insert(0, 'id', list_ids)    
 
     path = greeter.get_path()[0][0] + '\\' + greeter.get_import_folder_name()[0][0] + '\\'
-    
+
+
+    """Save the GeoDataframe in a json file"""
     save_gdf(gdf, path, "footways.json")
     print("Storing footways: done")
     return 0

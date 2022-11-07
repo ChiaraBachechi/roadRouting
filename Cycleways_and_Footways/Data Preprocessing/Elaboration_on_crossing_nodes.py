@@ -102,13 +102,15 @@ def preprocessing(gdf_crossing_nodes):
 
 
 def main(args=None):
+
+    """Parsing input parameters"""
     argParser = add_options()
     options = argParser.parse_args(args=args)
     greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
     path = greeter.get_path()[0][0] + '\\' + greeter.get_import_folder_name()[0][0] + '\\'
 
+    """Read the content of the json file, store it in a geodataframe and apply the preprocessing"""
     gdf_crossing_nodes = gpd.read_file(path + options.file_name, crs={'init': 'epsg:4326'}, geometry='geometry')
-
     preprocessing(gdf_crossing_nodes)
     save_gdf(gdf_crossing_nodes, path)
 

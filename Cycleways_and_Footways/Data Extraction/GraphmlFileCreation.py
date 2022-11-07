@@ -88,9 +88,13 @@ def getStreetNodes(dist, lat, lon, greeter, filename):
 
 
 def main(args=None):
+
+    """Parsing input parameters"""
     argParser = add_options()
     options = argParser.parse_args(args=args)
     greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
+
+    """Get the street nodes data from OSM"""
     getStreetNodes(options.dist, options.lat, options.lon, greeter, options.file_name)
 
 

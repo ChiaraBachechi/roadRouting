@@ -92,18 +92,23 @@ def createQueryCrossingNodes(dist, lat, lon):
 
 
 def main(args=None):
+
+    """Parsing of input parameters"""
     argParser = add_options()
     options = argParser.parse_args(args=args)
     dist = options.dist
     lon = options.lon
     lat = options.lat
+
+    """Generation of the App object to connect with the neo4j database instance"""
     greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
     url = 'http://overpass-api.de/api/interpreter'
 
 
-    #overpass query to get crossings mapped as nodes fro OSM
+    """overpass query to get crossings mapped as nodes fro OSM"""
     query = createQueryCrossingNodes(dist, lat, lon)
 
+    """Crossing nodes extraction and generation of the GeoDataframe"""
     result = requests.get(url, params={'data': query})
     data = result.json()['elements']
     features = [elem_to_feature(elem, "Point") for elem in data]
@@ -112,7 +117,8 @@ def main(args=None):
     gdf.insert(0, 'id', list_ids)
     
     path = greeter.get_path()[0][0] + '\\' + greeter.get_import_folder_name()[0][0] + '\\'
-    
+
+    """Save the GeoDataframe in a json file"""
     save_gdf(gdf, path, "crossing_nodes.json")
     print("Storing crossing nodes: done")
     return 0
