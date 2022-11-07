@@ -9,6 +9,7 @@ import json
 from shapely import wkt
 from shapely.ops import unary_union
 
+
 """In this file we are going to make some preprocessing in order to find
    relations between cycling paths and pedestrian paths
 """

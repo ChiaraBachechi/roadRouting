@@ -81,6 +81,7 @@ def read_file(path):
     return gdf
 
 
+
 def find_footways_close_to_crossing_nodes(gdf_footways, gdf_crossing_nodes):
     """Find the footways that are close to a signaled crossing mapped as a nodes"""
 

@@ -8,9 +8,8 @@ import numpy as np
 import json
 from shapely import wkt
 
+
 """In this file we are going to make some preprocessing on crossing mapped as nodes"""
-
-
 
 
 class App:

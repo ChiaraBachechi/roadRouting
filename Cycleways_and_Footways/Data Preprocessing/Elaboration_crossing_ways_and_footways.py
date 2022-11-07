@@ -13,6 +13,7 @@ from shapely import wkt
    relations between pedestrian paths and crossings mapped as ways
 """
 
+
 class App:
     def __init__(self, uri, user, password):
         self.driver = GraphDatabase.driver(uri, auth=(user, password))

@@ -9,6 +9,7 @@ import json
 from shapely import wkt
 import osmnx as ox
 
+
 """In this file we are going to make some preprocessing on street nodes in order to find 
 relationships between them and cycleways, footways and crossings 
 """
