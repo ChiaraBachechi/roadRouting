@@ -11,7 +11,7 @@ import pandas as pd
 import geopandas as gpd
 
 
-
+"""In this file we perform routing on projections using A*"""
 
 class App:
     def __init__(self, uri, user, password):
@@ -21,6 +21,7 @@ class App:
         self.driver.close()
 
     def get_path(self):
+        """gets the path of the neo4j instance"""
         with self.driver.session() as session:
             result = session.write_transaction(self._get_path)
             return result
@@ -33,6 +34,7 @@ class App:
         return result.values()
         
     def get_import_folder_name(self):
+        """gets the path of the import folder of the neo4j instance"""
         with self.driver.session() as session:
             result = session.write_transaction(self._get_import_folder_name)
             return result
@@ -47,6 +49,9 @@ class App:
     
     
     def routing_algorithm_based_on_cost(self, lat, lon, dest, projection):
+        """Routing considering as weight the cost, which is a tradeoff between the travel time and
+           the safety of the path
+        """
         with self.driver.session() as session:
             print(dest)
             result = session.write_transaction(self._routing_algorithm_based_on_cost, lat, lon, dest, projection)
@@ -85,6 +90,7 @@ class App:
 
 
     def routing_algorithm_based_on_travel_time(self, lat, lon, dest, projection):
+        """Routing considering as weight just the travel time"""
         with self.driver.session() as session:
             result = session.write_transaction(self._routing_algorithm_based_on_travel_time, lat, lon, dest, projection)
             return result
@@ -122,6 +128,7 @@ class App:
 
 
 def read_file(path):
+    """Read the file at the specified path"""
     f = open(path)
     fjson = json.load(f)
     df = pd.DataFrame(fjson['data'])
@@ -132,6 +139,7 @@ def read_file(path):
 
 
 def replace_ids(l):
+    """Replace the subgraph's nodes id"""
     for el in l:
         if 'roadbike/' in el:
             l[l.index(el)] = int(el.replace('roadbike/', ''))
@@ -154,6 +162,7 @@ def replace_ids(l):
 
 
 def creation_map(result_routing_cost, result_routing_travel, nodes, gdf_cycleways, gdf_footways, path, lat, lon):
+    """Draw the map with the obtained paths"""
     l_cost = result_routing_cost[0][1]
     l_travel = result_routing_travel[0][1]
 
@@ -220,6 +229,7 @@ def creation_map(result_routing_cost, result_routing_travel, nodes, gdf_cycleway
 
 
 def add_options():
+    """Parameters needed to run the script"""
     parser = argparse.ArgumentParser(description='Insertion of POI in the graph.')
     parser.add_argument('--latitude', '-x', dest='lat', type=float,
                         help="""Insert latitude of your starting location""",
@@ -255,6 +265,7 @@ def add_options():
 
 
 def main(args=None):
+    """Parsing input parameters"""
     argParser = add_options()
     options = argParser.parse_args(args=args)
     greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
@@ -265,28 +276,31 @@ def main(args=None):
     nodes.reset_index(inplace=True)
     print("Loading grapml file : done")
 
+    """The user can choose how to travel, using a bike or just walking"""
     graph_projection = ""
     if options.mode == 'cycleways':
         graph_projection = "bike_routes"
     else:
         graph_projection = "foot_routes"
 
+    """Extract cycleways and footways data from their json files"""
     gdf_cycleways = read_file(path + options.file_name_cycleways)
     gdf_footways = read_file(path + options.file_name_footways)
     print("Loading cycleways and footways dataframes : done")
 
-
+    """Routing considering as weight the cost"""
     result_routing_cost = greeter.routing_algorithm_based_on_cost(options.lat, options.lon, options.dest, graph_projection+"_cost")
     print("Find the best path between your source location and the target location, considering the travel time needed and the level of security of the cycleways used : done")
 
+
+    """Routing considering as weight the travel time"""
     result_routing_travel_time = greeter.routing_algorithm_based_on_travel_time(options.lat, options.lon, options.dest, graph_projection+"_travel_time")
     print("Find the best path between your source location and the target location, considering only the travel time needed : done")
 
+
+    """Generation of the map with the obtained paths displayed"""
     creation_map(result_routing_cost, result_routing_travel_time, nodes, gdf_cycleways, gdf_footways, path, options.lat, options.lon)
     print("Creation of the map with the two paths drawn on it : done ")
-
-
-
 
     return 0
 

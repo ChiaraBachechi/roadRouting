@@ -6,6 +6,9 @@ import argparse
 import os
 import time
 
+"""In this file we are going to show how to set the weights on general graph relationships
+   in order to perform routing 
+"""
 
 class App:
     def __init__(self, uri, user, password):
@@ -15,14 +18,15 @@ class App:
         self.driver.close()
 
 
-    def set_weights(self, file):
+    def set_weights(self):
+        """set the weights on general graph relationships"""
         with self.driver.session() as session:
-            result = session.write_transaction(self._set_weights, file)
+            result = session.write_transaction(self._set_weights)
             return result
 
     
     @staticmethod
-    def _set_weights(tx, file):
+    def _set_weights(tx):
         tx.run("match(bl:BicycleLane)-[r:CROSS_THE_ROAD]->(cn:CrossNode) set r.distance = bl.length + 5;") 
         tx.run("match(bl:BicycleLane)<-[r:CROSS_THE_ROAD]-(cn:CrossNode) set r.distance = bl.length + 5;") 
         tx.run("match(bl:BicycleLane)-[r:CROSS_THE_ROAD]->(cn:CrossWay) set r.distance = bl.length + cn.length/2;") 
@@ -85,6 +89,7 @@ class App:
 
 
     def create_projections(self):
+        """Generate a projection of the graph, which will be used to perform the routing"""
         with self.driver.session() as session:
             result = session.write_transaction(self._create_projections)
             return result
@@ -105,6 +110,7 @@ class App:
 
 
 def add_options():
+    """Parameters needed to run the script"""
     parser = argparse.ArgumentParser(description='Insertion of POI in the graph.')
     parser.add_argument('--destination', '-d', dest='dest', type=str,
                         help="""Insert the name of your destination""",
@@ -115,24 +121,21 @@ def add_options():
     parser.add_argument('--neo4juser', '-u', dest='neo4juser', type=str,
                         help="""Insert the name of the user of the local neo4j instance.""",
                         required=True)
-    parser.add_argument('--nameFilecycleways', '-fc', dest='file_name_cycleways', type=str,
-                        help="""Insert the name of the .json file containing cycleways.""", 
-                        required=True)
    
     return parser
 
 
 def main(args=None):
+    """Parsing input parameters"""
     argParser = add_options()
     options = argParser.parse_args(args=args)
     greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
 
-    greeter.create_continue_by_footways_relations(options.file_name_cycleways)
-    print("Setting the relationships weight for the routing : done")
-
+    """Set weights on general graph relationships"""
     greeter.set_weights()
     print("Setting the relationships weight for the routing : done")
 
+    """Generate a projection of the graph, which will be used to perform the routing"""
     greeter.create_projections()
     print("Create graph projections : done")
 

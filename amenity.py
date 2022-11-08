@@ -26,7 +26,7 @@ class App:
         return result.values()
         
     def get_import_folder_name(self):
-        """get neo4j instance import folder name""""
+        """get neo4j instance import folder name"""
         with self.driver.session() as session:
             result = session.write_transaction(self._get_import_folder_name)
             return result

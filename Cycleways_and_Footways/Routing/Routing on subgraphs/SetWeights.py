@@ -6,6 +6,7 @@ import argparse
 import os
 import time
 
+"""In this file we are going to show how to set weights on subgraphs' relationships"""
 
 class App:
     def __init__(self, uri, user, password):
@@ -15,6 +16,7 @@ class App:
         self.driver.close()
 
     def set_relations_weights(self):
+        """Set weights on subgraphs' relationships"""
         with self.driver.session() as session:
             result = session.write_transaction(self._set_relations_weights)
             return result
@@ -249,6 +251,7 @@ class App:
 
 
 def add_options():
+    """Parameters needed to run the script"""
     parser = argparse.ArgumentParser(description='Insertion of POI in the graph.')
     parser.add_argument('--neo4jURL', '-n', dest='neo4jURL', type=str,
                         help="""Insert the address of the local neo4j instance. For example: neo4j://localhost:7687""",
@@ -264,10 +267,12 @@ def add_options():
 
 
 def main(args=None):
+    """Parsing input parameters"""
     argParser = add_options()
     options = argParser.parse_args(args=args)
     greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
 
+    """Set weights on subgraphs' relationshps"""
     greeter.set_relations_weights()
     print("Setting the relationships weight for the routing : done")
 

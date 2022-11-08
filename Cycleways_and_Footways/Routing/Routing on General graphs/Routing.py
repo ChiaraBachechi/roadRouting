@@ -9,7 +9,7 @@ from shapely import wkt
 import pandas as pd
 import geopandas as gpd
 
-
+"""In this file we are going to show how to perform routing on the layers' general graphs """
 
 
 class App:
@@ -20,6 +20,7 @@ class App:
         self.driver.close()
 
     def get_path(self):
+        """gets the path of the neo4j instance"""
         with self.driver.session() as session:
             result = session.write_transaction(self._get_path)
             return result
@@ -32,6 +33,7 @@ class App:
         return result.values()
         
     def get_import_folder_name(self):
+        """gets the path of the import folder of the neo4j instance"""
         with self.driver.session() as session:
             result = session.write_transaction(self._get_import_folder_name)
             return result
@@ -45,6 +47,9 @@ class App:
 
     
     def routing_algorithm_based_on_cost(self, lat, lon, dest):
+        """Perform routing using dijkstra by considering as weight the cost attribute, which represents a tradeoff
+           between travel time and safety of the path
+        """
         with self.driver.session() as session:
             print(dest)
             result = session.write_transaction(self._routing_algorithm_based_on_cost, lat, lon, dest)
@@ -79,6 +84,7 @@ class App:
 
 
 def read_file(path):
+    """Read the file specified by the path"""
     f = open(path)
     fjson = json.load(f)
     df = pd.DataFrame(fjson['data'])
@@ -89,7 +95,7 @@ def read_file(path):
 
 
 def creation_map(result_routing_cost, gdf_cycleways, gdf_footways, path, lat, lon):
- 
+    """Draw a map which displays the path obtained from the routing process"""
     l_cycleways = []
     l_footways = []
 
@@ -120,6 +126,7 @@ def creation_map(result_routing_cost, gdf_cycleways, gdf_footways, path, lat, lo
 
 
 def add_options():
+    """Parameters nedeed to run the script"""
     parser = argparse.ArgumentParser(description='Insertion of POI in the graph.')
     parser.add_argument('--latitude', '-x', dest='lat', type=float,
                         help="""Insert latitude of your starting location""",
@@ -149,19 +156,22 @@ def add_options():
 
 
 def main(args=None):
+    """Parsing input parameters"""
     argParser = add_options()
     options = argParser.parse_args(args=args)
     greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
     path = greeter.get_path()[0][0] + '\\' + greeter.get_import_folder_name()[0][0] + '\\' 
 
+    """Extract cycleways and footways data from their json files"""
     gdf_cycleways = read_file(path + options.file_name_cycleways)
     gdf_footways = read_file(path + options.file_name_footways)
 
 
-
+    """Perform routing"""
     result_routing_cost = greeter.routing_algorithm_based_on_cost(options.lat, options.lon, options.dest)
     print("Find the best path between your source location and the target location, considering the travel time needed and the level of security of the cycleways used : done")
 
+    """Generation of the map displaying the obtained path"""
     creation_map(result_routing_cost, gdf_cycleways, gdf_footways, path, options.lat, options.lon)
     print("Creation of the map with the two paths drawn on it : done ")
 

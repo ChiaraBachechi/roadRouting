@@ -6,6 +6,7 @@ import argparse
 import os
 import time
 
+"""In this file we are going to show hoe to generate projections of subgraphs in order to perform routing"""
 
 class App:
     def __init__(self, uri, user, password):
@@ -16,6 +17,7 @@ class App:
 
 
     def create_projections(self):
+        """Create projections, one considering as weight the travel time and one the cost"""
         with self.driver.session() as session:
             result = session.write_transaction(self._create_projections)
             return result
@@ -53,6 +55,7 @@ class App:
 
 
 def add_options():
+    """Parameters nedeed to run the script"""
     parser = argparse.ArgumentParser(description='Insertion of POI in the graph.')
     parser.add_argument('--neo4jURL', '-n', dest='neo4jURL', type=str,
                         help="""Insert the address of the local neo4j instance. For example: neo4j://localhost:7687""",
@@ -68,10 +71,12 @@ def add_options():
 
 
 def main(args=None):
+    """Parsing input parameters"""
     argParser = add_options()
     options = argParser.parse_args(args=args)
     greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
 
+    """Generate projections"""
     greeter.create_projections()
     print("Create graph projections for the routing : done")
 
