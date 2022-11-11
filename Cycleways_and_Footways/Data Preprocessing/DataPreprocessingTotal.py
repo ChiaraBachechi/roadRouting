@@ -93,6 +93,7 @@ def add_options():
     return parser
 
 def main(args=None):
+    """Parsing input parameters"""
     argParser = add_options()
     options = argParser.parse_args(args=args)
     greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
@@ -120,6 +121,7 @@ def main(args=None):
     Elaboration_on_footways.save_gdf(gdf_footways, path)
     Elaboration_on_crossing_nodes.save_gdf(gdf_crossing_nodes, path)
     Elaboration_on_crossing_ways.save_gdf(gdf_crossing_ways, path)
+
 
 main()
 
