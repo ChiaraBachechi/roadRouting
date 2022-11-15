@@ -144,5 +144,5 @@ def main(args=None):
     save_gdf(gdf_crossing_ways, path + "crossing_ways.json")
 
 
-
-#main()
+if __name__ == "__main__":
+    main()

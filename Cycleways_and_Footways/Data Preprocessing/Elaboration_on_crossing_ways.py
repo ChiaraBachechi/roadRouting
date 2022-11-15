@@ -124,5 +124,8 @@ def main(args=None):
     preprocessing(gdf_crossing_ways)
     save_gdf(gdf_crossing_ways)
 
-#main()
+
+
+if __name__ == "__main__":
+    main()
 

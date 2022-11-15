@@ -114,5 +114,7 @@ def main(args=None):
     preprocessing(gdf_crossing_nodes)
     save_gdf(gdf_crossing_nodes, path)
 
-#main()
+
+if __name__ == "__main__":
+    main()
 

@@ -124,4 +124,5 @@ def main(args=None):
     print("Storing crossing ways: done")
     return 0
 
-#main()
+if __name__ == "__main__":
+    main()

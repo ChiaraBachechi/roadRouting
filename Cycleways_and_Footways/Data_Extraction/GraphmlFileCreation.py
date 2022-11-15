@@ -98,4 +98,5 @@ def main(args=None):
     getStreetNodes(options.dist, options.lat, options.lon, greeter, options.file_name)
 
 
-#main()
+if __name__ == "__main__":
+    main()
