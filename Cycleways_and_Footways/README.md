@@ -5,8 +5,8 @@ Framework that allows to:
 - generation of the general graphs of cycleways and footways
 - generation of the subgraphs of cycleways and footways
 - connection of cycleways and footways layers between them 
-- connection of cycleways and footways layers with the road network one
-- perform multi-modal routing on th multi-layered graph based on travel time and path safety
+- connection of cycleways and footways layers with the road network layer
+- perform multi-modal routing on the multi-layered graph based on travel time and path safety
 
 ## Requirements
  
