@@ -46,18 +46,17 @@ class App:
         return result.values()
 
     
-    def routing_algorithm_based_on_cost(self, lat, lon, dest):
-        """Perform routing using dijkstra by considering as weight the cost attribute, which represents a tradeoff
-           between travel time and safety of the path
+    def routing_algorithm_dijkstra(self, lat, lon, dest, weight):
+        """Perform routing using dijkstra algorithm
         """
         with self.driver.session() as session:
             print(dest)
-            result = session.write_transaction(self._routing_algorithm_based_on_cost, lat, lon, dest)
+            result = session.write_transaction(self._routing_algorithm_dijkstra, lat, lon, dest, weight)
             return result
 
     
     @staticmethod
-    def _routing_algorithm_based_on_cost(tx, lat, lon, dest):
+    def _routing_algorithm_dijkstra(tx, lat, lon, dest, weight):
         result = tx.run("""
                 MATCH(t:Tag)<-[:TAGS]-(poi:PointOfInterest)-[:MEMBER]->(osm:OSMWayNode) 
                 where t.name =  $dest 
@@ -68,7 +67,7 @@ class App:
                 CALL gds.shortestPath.dijkstra.stream('routes_generic', {
                 sourceNode: source,
                 targetNode: target,
-                relationshipWeightProperty: 'cost'
+                relationshipWeightProperty: $weight
                 })
                 YIELD index, sourceNode, targetNode, totalCost, nodeIds, costs, path
                 RETURN index,
@@ -78,9 +77,10 @@ class App:
                     [nodeId IN nodeIds | gds.util.asNode(nodeId).id_num] AS nodeIDs,
                     costs,
                     nodes(path) as nodespath
-                """, lat=lat, lon=lon, dest=dest)
+                """, lat=lat, lon=lon, dest=dest, weight=weight)
 
         return result.values()
+
 
 
 def read_file(path):
@@ -94,7 +94,7 @@ def read_file(path):
     return gdf
 
 
-def creation_map(result_routing_cost, gdf_cycleways, gdf_footways, path, lat, lon):
+def creation_map(result_routing_cost, gdf_cycleways, gdf_footways, path, lat, lon, mapName):
     """Draw a map which displays the path obtained from the routing process"""
     l_cycleways = []
     l_footways = []
@@ -116,13 +116,45 @@ def creation_map(result_routing_cost, gdf_cycleways, gdf_footways, path, lat, lo
                            style_function=lambda x: {'color': 'green', 'weight':'3'}).add_to(m3)
                             
         
-    m3.save(path + "secondary_routing.html")
+    m3.save(path + mapName)
 
 
+def creation_map_total(result_routing_cost, result_routing_travel_time, gdf_cycleways, gdf_footways, path, lat, lon, mapName):
+    """Draw a map which displays the paths obtained from the routing process"""
+    l_cycleways_cost = []
+    l_footways_cost = []
 
-    
+    l_cycleways_travel_time = []
+    l_footways_travel_time = []
+
+    for el in result_routing_cost[0][4]:
+        if 'cycleway/' in el:
+            l_cycleways_cost.append(int(el.replace('cycleway/', '')))
+        elif 'foot/' in el:
+            l_footways_cost.append(int(el.replace('foot/', '')))
+
+    for el in result_routing_travel_time[0][4]:
+        if 'cycleway/' in el:
+            l_cycleways_travel_time.append(int(el.replace('cycleway/', '')))
+        elif 'foot/' in el:
+            l_footways_travel_time.append(int(el.replace('foot/', '')))
+
+    m3 = folium.Map([lat, lon], zoom_start=15)
+
+    folium.GeoJson(data=gdf_cycleways[gdf_cycleways['id_num'].isin(l_cycleways_cost)],
+                   style_function=lambda x: {'fillColor': 'blue'}).add_to(m3)
+
+    folium.GeoJson(data=gdf_footways[gdf_footways['id_num'].isin(l_footways_cost)],
+                   style_function=lambda x: {'color': 'blue', 'weight': '3'}).add_to(m3)
 
 
+    folium.GeoJson(data=gdf_cycleways[gdf_cycleways['id_num'].isin(l_cycleways_travel_time)],
+                   style_function=lambda x: {'fillColor': 'red'}).add_to(m3)
+
+    folium.GeoJson(data=gdf_footways[gdf_footways['id_num'].isin(l_footways_travel_time)],
+                   style_function=lambda x: {'color': 'red', 'weight': '3'}).add_to(m3)
+
+    m3.save(path + mapName)
 
 
 def add_options():
@@ -152,6 +184,12 @@ def add_options():
     parser.add_argument('--nameFileFootways', '-ff', dest='file_name_footways', type=str,
                         help="""Insert the name of the .json file containing the footways.""",
                         required=True)
+    parser.add_argument('--weight', '-w', dest='weight', type=str,
+                        help="""Insert the kind of weight to use for the routing : travel_time or cost.""",
+                        required=True)
+    parser.add_argument('--mapName', '-mn', dest='mapName', type=str,
+                        help="""Insert the name of the .html file containing the map with the computed path.""",
+                        required=True)
     return parser
 
 
@@ -166,16 +204,28 @@ def main(args=None):
     gdf_cycleways = read_file(path + options.file_name_cycleways)
     gdf_footways = read_file(path + options.file_name_footways)
 
+    if options.weight == "both":
+        result_routing_cost = greeter._routing_algorithm_dijkstra(options.lat, options.lon, options.dest, "cost")
+        print("Find the best path between your source location and the target location, considering the specified weight needed : done")
 
-    """Perform routing"""
-    result_routing_cost = greeter.routing_algorithm_based_on_cost(options.lat, options.lon, options.dest)
-    print("Find the best path between your source location and the target location, considering the travel time needed and the level of security of the cycleways used : done")
-
-    """Generation of the map displaying the obtained path"""
-    creation_map(result_routing_cost, gdf_cycleways, gdf_footways, path, options.lat, options.lon)
-    print("Creation of the map with the two paths drawn on it : done ")
+        result_routing_travel_time = greeter._routing_algorithm_dijkstra(options.lat, options.lon, options.dest, "travel_time")
+        print(
+            "Find the best path between your source location and the target location, considering the specified weight needed : done")
 
 
+        """Generation of the map displaying the obtained path"""
+        creation_map_total(result_routing_cost, result_routing_travel_time, gdf_cycleways, gdf_footways, path, options.lat, options.lon,
+                           options.mapName)
+        print("Creation of the map with the two paths drawn on it : done ")
+    else:
+        result_routing = greeter._routing_algorithm_dijkstra(options.lat, options.lon, options.dest, options.weight)
+        print(
+            "Find the best path between your source location and the target location, considering the specified weight needed : done")
+
+        """Generation of the map displaying the obtained path"""
+        creation_map(result_routing, gdf_cycleways, gdf_footways, path,
+                           options.lat, options.lon, options.mapName)
+        print("Creation of the map with the two paths drawn on it : done ")
 
 
     return 0

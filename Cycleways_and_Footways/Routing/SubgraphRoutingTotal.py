@@ -51,6 +51,15 @@ def add_options():
     parser.add_argument('--nameFileFootways', '-ff', dest='file_name_footways', type=str,
                         help="""Insert the name of the .json file containing the footways.""",
                         required=True)
+    parser.add_argument('--pathfindingAlgorithm', '-a', dest='pathfinding_algorithm', type=str,
+                        help="""Insert the pathfinding algorithm to use.""",
+                        required=True)
+    parser.add_argument('--weight', '-w', dest='weight', type=str,
+                        help="""Insert the weight to use in order to perform the routing : travel_time, cost or both.""",
+                        required=True)
+    parser.add_argument('--mapName', '-mn', dest='mapName', type=str,
+                        help="""Insert the name of the file containing the map with the computed path.""",
+                        required=True)
     return parser
 
 
@@ -71,75 +80,127 @@ def main(args=None):
     greeterProj.close()
 
 
-    """ROUTING ON SUBGRAPHS USING DIJKSTRA"""
+    if options.pathfinding_algorithm == "dijkstra":
+        """ROUTING ON SUBGRAPHS USING DIJKSTRA"""
+        greeterDijkstra = Routing_on_subgraphs.Routing_Dijkstra.App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
+        path = greeterDijkstra.get_path()[0][0] + '\\' + greeterDijkstra.get_import_folder_name()[0][0] + '\\'
 
-    greeterDijkstra = Routing_on_subgraphs.Routing_Dijkstra.App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
-    path = greeterDijkstra.get_path()[0][0] + '\\' + greeterDijkstra.get_import_folder_name()[0][0] + '\\'
+        G = ox.io.load_graphml(path + options.file_name)
+        nodes, edges = ox.graph_to_gdfs(G)
+        nodes.reset_index(inplace=True)
 
-    G = ox.io.load_graphml(path + options.file_name)
-    nodes, edges = ox.graph_to_gdfs(G)
-    nodes.reset_index(inplace=True)
+        """The user can choose how to travel, using a bike or just walking"""
+        graph_projection = ""
+        if options.mode == 'cycleways':
+            graph_projection = "bike_routes"
+        else:
+            graph_projection = "foot_routes"
 
-    """The user can choose how to travel, using a bike or just walking"""
-    graph_projection = ""
-    if options.mode == 'cycleways':
-        graph_projection = "bike_routes"
-    else:
-        graph_projection = "foot_routes"
+        """Extract cycleways and footways data from their json files"""
+        gdf_cycleways = Routing_on_subgraphs.Routing_Dijkstra.read_file(path + options.file_name_cycleways)
+        gdf_footways = Routing_on_subgraphs.Routing_Dijkstra.read_file(path + options.file_name_footways)
 
-    """Extract cycleways and footways data from their json files"""
-    gdf_cycleways = Routing_on_subgraphs.Routing_Dijkstra.read_file(path + options.file_name_cycleways)
-    gdf_footways = Routing_on_subgraphs.Routing_Dijkstra.read_file(path + options.file_name_footways)
+        if options.weight == "cost":
+            """Routing considering as weight the cost"""
+            result_routing_cost = greeterDijkstra.routing_algorithm_based_on_cost(options.lat, options.lon, options.dest,
+                                                                          graph_projection + "_cost")
+            """Generation of the map with the obtained paths displayed"""
+            Routing_on_subgraphs.Routing_Dijkstra.creation_map_cost(result_routing_cost, nodes,
+                                                               gdf_cycleways, gdf_footways, path, options.lat,
+                                                               options.lon, options.mapName)
+        elif options.weight == "travel_time":
+            """Routing considering as weight the travel time"""
+            result_routing_travel_time = greeterDijkstra.routing_algorithm_based_on_travel_time(options.lat, options.lon, options.dest,
+                                                                                        graph_projection + "_travel_time")
 
-    """Routing considering as weight the cost"""
-    result_routing_cost = greeterDijkstra.routing_algorithm_based_on_cost(options.lat, options.lon, options.dest,
-                                                                  graph_projection + "_cost")
-
-    """Routing considering as weight the travel time"""
-    result_routing_travel_time = greeterDijkstra.routing_algorithm_based_on_travel_time(options.lat, options.lon, options.dest,
-                                                                                graph_projection + "_travel_time")
-
-    """Generation of the map with the obtained paths displayed"""
-    Routing_on_subgraphs.Routing_Dijkstra.creation_map(result_routing_cost, result_routing_travel_time, nodes, gdf_cycleways, gdf_footways, path, options.lat,
-                 options.lon)
+            """Generation of the map with the obtained paths displayed"""
+            Routing_on_subgraphs.Routing_Dijkstra.creation_map_travel_time(result_routing_travel_time, nodes, gdf_cycleways, gdf_footways, path, options.lat,
+                         options.lon, options.mapName)
+        elif options.weight == "both":
+            """Routing considering as weight the travel time"""
+            result_routing_cost = greeterDijkstra.routing_algorithm_based_on_cost(options.lat,
+                                                                                                options.lon,
+                                                                                                options.dest,
+                                                                                                graph_projection + "_cost")
 
 
-    greeterDijkstra.close()
+            """Routing considering as weight the travel time"""
+            result_routing_travel_time = greeterDijkstra.routing_algorithm_based_on_travel_time(options.lat,
+                                                                                                options.lon,
+                                                                                                options.dest,
+                                                                                                graph_projection + "_travel_time")
+
+            """Generation of the map with the obtained paths displayed"""
+            Routing_on_subgraphs.Routing_Dijkstra.creation_map_total(result_routing_cost, result_routing_travel_time, nodes,
+                                                                           gdf_cycleways, gdf_footways, path,
+                                                                           options.lat,
+                                                                           options.lon, options.mapName)
+        else:
+            raise RuntimeError("Wrong value for the parameter!!!")
 
 
-    """ROUTING ON SUBGRAPHS USING A*"""
+        greeterDijkstra.close()
 
-    greeterAstar = Routing_on_subgraphs.Routing_AStar.App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
-    path = greeterAstar.get_path()[0][0] + '\\' + greeterAstar.get_import_folder_name()[0][0] + '\\'
+    elif options.pathfinding_algorithm == "astar":
+        """ROUTING ON SUBGRAPHS USING A*"""
 
-    G = ox.io.load_graphml(path + options.file_name)
-    nodes, edges = ox.graph_to_gdfs(G)
-    nodes.reset_index(inplace=True)
+        greeterAstar = Routing_on_subgraphs.Routing_AStar.App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
+        path = greeterAstar.get_path()[0][0] + '\\' + greeterAstar.get_import_folder_name()[0][0] + '\\'
 
-    """The user can choose how to travel, using a bike or just walking"""
-    graph_projection = ""
-    if options.mode == 'cycleways':
-        graph_projection = "bike_routes"
-    else:
-        graph_projection = "foot_routes"
+        G = ox.io.load_graphml(path + options.file_name)
+        nodes, edges = ox.graph_to_gdfs(G)
+        nodes.reset_index(inplace=True)
 
-    """Extract cycleways and footways data from their json files"""
-    gdf_cycleways = Routing_on_subgraphs.Routing_AStar.read_file(path + options.file_name_cycleways)
-    gdf_footways = Routing_on_subgraphs.Routing_AStar.read_file(path + options.file_name_footways)
+        """The user can choose how to travel, using a bike or just walking"""
+        graph_projection = ""
+        if options.mode == 'cycleways':
+            graph_projection = "bike_routes"
+        else:
+            graph_projection = "foot_routes"
 
-    """Routing considering as weight the cost"""
-    result_routing_cost = greeterAstar.routing_algorithm_based_on_cost(options.lat, options.lon, options.dest,
-                                                                  graph_projection + "_cost")
+        """Extract cycleways and footways data from their json files"""
+        gdf_cycleways = Routing_on_subgraphs.Routing_AStar.read_file(path + options.file_name_cycleways)
+        gdf_footways = Routing_on_subgraphs.Routing_AStar.read_file(path + options.file_name_footways)
 
-    """Routing considering as weight the travel time"""
-    result_routing_travel_time = greeterAstar.routing_algorithm_based_on_travel_time(options.lat, options.lon, options.dest,
-                                                                                graph_projection + "_travel_time")
+        if options.weight == "cost":
+            """Routing considering as weight the cost"""
+            result_routing_cost = greeterAstar.routing_algorithm_based_on_cost(options.lat, options.lon, options.dest,
+                                                                          graph_projection + "_cost")
 
-    """Generation of the map with the obtained paths displayed"""
-    Routing_on_subgraphs.Routing_AStar.creation_map(result_routing_cost, result_routing_travel_time, nodes, gdf_cycleways, gdf_footways, path, options.lat,
-                 options.lon)
+            """Generation of the map with the obtained paths displayed"""
+            Routing_on_subgraphs.Routing_AStar.creation_map_cost(result_routing_cost, nodes,
+                                                                    gdf_cycleways, gdf_footways, path, options.lat,
+                                                                    options.lon, options.mapName)
 
-    greeterAstar.close()
+
+        elif options.weight == "travel_time":
+            """Routing considering as weight the travel time"""
+            result_routing_travel_time = greeterAstar.routing_algorithm_based_on_travel_time(options.lat, options.lon, options.dest,
+                                                                                        graph_projection + "_travel_time")
+
+            """Generation of the map with the obtained paths displayed"""
+            Routing_on_subgraphs.Routing_AStar.creation_map_travel_time(result_routing_travel_time, nodes,
+                                                                 gdf_cycleways, gdf_footways, path, options.lat,
+                                                                 options.lon, options.mapName)
+
+        elif options.weight == "both":
+            """Routing considering as weight the cost"""
+            result_routing_cost = greeterAstar.routing_algorithm_based_on_cost(options.lat, options.lon, options.dest,
+                                                                               graph_projection + "_cost")
+
+            """Routing considering as weight the travel time"""
+            result_routing_travel_time = greeterAstar.routing_algorithm_based_on_travel_time(options.lat, options.lon,
+                                                                                             options.dest,
+                                                                                             graph_projection + "_travel_time")
+
+            """Generation of the map with the obtained paths displayed"""
+            Routing_on_subgraphs.Routing_AStar.creation_map_total(result_routing_cost, result_routing_travel_time, nodes, gdf_cycleways, gdf_footways, path, options.lat,
+                         options.lon, options.mapName)
+
+        else:
+            raise RuntimeError("Wrong parameter value")
+
+        greeterAstar.close()
 
 main()
 

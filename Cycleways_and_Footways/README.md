@@ -41,7 +41,7 @@ Moreover, you will need to install [OSMnx][4], [overpy][5], [pandas][6] and [geo
 Example of how to extract footways and crossings from OSM:
 
 ````shell command
-python DataExtractionTotal.py -x 44.645885 -y 10.9255707 -d 5000 -n neo4j://localhost:7687 -u neo4j -p passwd -f streetNodesModena.graphml
+python DataExtractionTotal.py -x 44.645885 -y 10.9255707 -d 5000 -n neo4j://localhost:7687 -u neo4j -p passwd -ff footways.json -fcn crossingnodes.json -fcw crossinways.json -fsn streetNodesModena.graphml
 ````
 In this case Modena footways, crossings and street nodes are extracted and stored in files contained in the import folder of the neo4j instance. Cycleways data were already provided in a geojson file. The parameters passed represent:
 
@@ -51,7 +51,11 @@ In this case Modena footways, crossings and street nodes are extracted and store
 - _n_ address of the local Neo4j instance 
 - _u_ user of the local Neo4j instance
 - _p_ password of the local Neo4j instance
-- _f_ name of the file where to save the street nodes graph with extention '.graphml' (this file will be created by the script and automatically placed in the import folder of neo4j)
+- _ff_ name of the file where to save footways data (this file will be created by the script and automatically placed in the import folder of neo4j)
+- _fcn_ name of the file where to save crossing nodes data (this file will be created by the script and automatically placed in the import folder of neo4j)
+- _fcw_ name of the file where to save crossing ways data (this file will be created by the script and automatically placed in the import folder of neo4j) 
+- _fsn_ name of the file where to save the street nodes graph with extention '.graphml' (this file will be created by the script and automatically placed in the import folder of neo4j)
+- _fcl_ name of the file where are already stored cycleways data or where to save the cycleways data
 
 ## Data preprocessing
 
@@ -82,7 +86,7 @@ Example of how to generate cycleways and footways general graphs:
 python GeneralGraphGeneration.py -n neo4j://localhost:7687 -u neo4j -p passwd -fc cycleways.json -fcn crossingnodes.json -fcw crossingways.json -ff footways.json -fnb neighborhoods.json
 ````
 
-The script allows to generate general graphs in cycleways and footways layers and also the relationships between nodes of the same general graph and nodes of different general graphs.
+The script allows to generate general graphs in cycleways and footways layers and also the relationships between nodes of the same general graph and nodes of different general graphs. The json files we pass to the script must be the ones obtained after the preprocessing step made previuosly.
 
 The parameters passed are:
 - _n_ address of the local Neo4j instance 
@@ -103,7 +107,7 @@ Example of how to generate cycleways and footways subgraphs:
 python SubgraphGeneration.py -x 44.645885 -y 10.9255707 -d 5000 -n neo4j://localhost:7687 -u neo4j -p passwd -fc cycleways.json -fcn crossingnodes.json -fcw crossingways.json -ff footways.json
 ````
 
-The script allows to generate subgraphs in cycleways and footways layers and also the relationships between nodes of the same subgraph and nodes of different subgraphs.
+The script allows to generate subgraphs in cycleways and footways layers and also the relationships between nodes of the same subgraph and nodes of different subgraphs. The json files we pass to the script must be the same used to run the GeneralGraphGeneration script. 
 
 The parameters passed are:
 - _x_ latitude of the central point of the area of interest
@@ -132,7 +136,7 @@ The routing performed on general graphs gives back general results, since the no
 Example of how to perform routing on general graphs:
 
 ````shell command
-python GeneralRoutingTotal.py -x 44.645885 -y 10.9255707 -d 5000 -n neo4j://localhost:7687 -u neo4j -p passwd -fcl cycleways.json -ff footways.json
+python GeneralRoutingTotal.py -x 44.645885 -y 10.9255707 -d 5000 -n neo4j://localhost:7687 -u neo4j -p passwd -fcl cycleways.json -ff footways.json -w travel_time -mn map.html
 ````
 
 The parameters passed are:
@@ -144,13 +148,18 @@ The parameters passed are:
 - _p_ password of the local Neo4j instance
 - _fcl_ name of the file containing cycleways data
 - _ff_ name of the file containing footways data
+- _w_ weight to consider in order to perform the routing (cost, travel_time or both)
+- _mn_ name of the file containing the map with the path/paths computed displayed
+
+
+If we decide to perform routing on general graphs, we use only the Dijkstra algorithm because A* requires to specify latitude and longitude coordinates of the single nodes, which cannot be done in this case because nodes represent path in their entirety with more than one couple of latitude and longitude coordinates. The script will return a map in which it is displayed the path computed according to the weight decided. If the weight both is given in input, the results will diplayed both paths, so the one which is computed with the travel time and the one obtained using the cost.
 
 ### Subgraphs Routing
 The routing performed on subgraphs gives back more specific and accurate results, since the nodes and relationships represent portions of paths. In this script can also be decided the transport mode, so the user can express his choice on moving by bicycle or by foot. 
 Example of how to perform routing on general graphs:
 
 ````shell command
-python SubgraphRoutingTotal.py -x 44.645885 -y 10.9255707 -d 5000 -n neo4j://localhost:7687 -u neo4j -p passwd -m mode -fcl cycleways.json -ff footways.json
+python SubgraphRoutingTotal.py -x 44.645885 -y 10.9255707 -d 5000 -n neo4j://localhost:7687 -u neo4j -p passwd -m mode -fcl cycleways.json -ff footways.json -w cost -mn map.html
 ````
 
 The parameters passed are:
@@ -163,6 +172,12 @@ The parameters passed are:
 - _p_ password of the local Neo4j instance
 - _fcl_ name of the file containing cycleways data
 - _ff_ name of the file containing footways data
+- _a_ pathfinding algorithm to use 
+- _w_ weight to consider in order to perform the routing (cost, travel_time or both)
+- _mn_ name of the file containing the map with the path/paths computed displayed
+
+The script allow to decide which pathfinding algorithm use between Dijkstra and A* and also the kind of relationship weights to adopt in order to perform routing. The script will return a map in which it is displayed the path computed according to the weight decided. If the weight both is given in input, the results will diplayed both paths, so the one which is computed with the travel time and the one obtained using the cost.
+
 
 
 

@@ -116,8 +116,23 @@ def classification(row):
 				return 'vicino al traffico (V)'
 		
 
+def createQueryCycleways(dist, lat, lon):
+	"""Create the query to fetch the data of interest"""
 
-def main():
+	query = f"""[out:json][timeout:1000];
+								(
+								way(around:{dist},{lat},{lon})[highway="cycleway"]->.all;
+								way(around:{dist},{lat},{lon})[bicycle];
+								way(around:{dist},{lat},{lon})[cycleway];
+								);
+								out geom;
+							   """
+	return query
+
+
+
+
+def main(args=None):
 	"""Parsing of input parameters"""
 	argParser = add_options()
 	options = argParser.parse_args(args=args)
@@ -127,14 +142,7 @@ def main():
 	greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
 	"""Employ overpass API to get data regarding cycleways"""
 	url = 'http://overpass-api.de/api/interpreter'
-	query = f"""[out:json][timeout:1000];
-								(
-								way(around:{dist},{lat},{lon})[highway="cycleway"]->.all;
-								way(around:{dist},{lat},{lon})[bicycle];
-								way(around:{dist},{lat},{lon})[cycleway];
-								);
-								out geom;
-							   """
+	query = createQueryCycleways(dist, lat, lon)
 	result = requests.get(url, params={'data': query})
 	data = result.json()['elements']
 	"""generating a geodataframe with line geometry"""

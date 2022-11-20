@@ -41,6 +41,9 @@ def add_options():
     parser.add_argument('--nameFileFootways', '-ff', dest='file_name_footways', type=str,
                         help="""Insert the name of the .json file containing the footways.""",
                         required=True)
+    parser.add_argument('--weight', '-w', dest='weight', type=str,
+                        help="""Insert the kind of weight to use for the routing : travel_time or cost.""",
+                        required=True)
     return parser
 
 
@@ -63,7 +66,7 @@ def main(args=None):
     gdf_cycleways = Routing_on_General_graphs.Routing.read_file(path + options.file_name_cycleways)
     gdf_footways = Routing_on_General_graphs.Routing.read_file(path + options.file_name_footways)
 
-    result_routing_cost = greeterRouting.routing_algorithm_based_on_cost(options.lat, options.lon, options.dest)
+    result_routing_cost = greeterRouting.routing_algorithm_dijkstra(options.lat, options.lon, options.dest, options.weight)
     Routing_on_General_graphs.Routing.creation_map(result_routing_cost, gdf_cycleways, gdf_footways, path, options.lat, options.lon)
 
 

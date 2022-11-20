@@ -32,8 +32,20 @@ def add_options():
     parser.add_argument('--distance', '-d', dest='dist', type=float,
                         help="""Insert distance (in meters) of the area to be covered""",
                         required=True)
-    parser.add_argument('--nameFile', '-f', dest='file_name', type=str,
-                        help="""Insert the name of the .graphml file.""",
+    parser.add_argument('--nameFile', '-ff', dest='file_name_footways', type=str,
+                        help="""Insert the name of the footways .json file.""",
+                        required=True)
+    parser.add_argument('--nameFile', '-fcn', dest='file_name_crossingnodes', type=str,
+                        help="""Insert the name of the crossing nodes .json file.""",
+                        required=True)
+    parser.add_argument('--nameFile', '-fcw', dest='file_name_crossingways', type=str,
+                        help="""Insert the name of the crossing ways .json file.""",
+                        required=True)
+    parser.add_argument('--nameFile', '-fsn', dest='file_name_streetnodes', type=str,
+                        help="""Insert the name of the street nodes .graphml file.""",
+                        required=True)
+    parser.add_argument('--nameFile', '-fcl', dest='file_name_cycleways', type=str,
+                        help="""Insert the name of the cycleways .json file.""",
                         required=True)
     return parser
 
@@ -86,7 +98,7 @@ def main(args=None):
     getData(url, queryCrossWays, greeter, "way/", "LineString", "crossingways.json")
     print("Extracting crossing ways data : done")
 
-    """Extrct street nodes data from OSM"""
+    """Extract street nodes data from OSM"""
     getStreetNodes(dist, lat, lon, greeter, options.file_name)
     print("Extracting street nodes : done")
 
