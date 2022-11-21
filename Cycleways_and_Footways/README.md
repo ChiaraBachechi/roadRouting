@@ -41,7 +41,7 @@ Moreover, you will need to install [OSMnx][4], [overpy][5], [pandas][6] and [geo
 Example of how to extract footways and crossings from OSM:
 
 ````shell command
-python DataExtractionTotal.py -x 44.645885 -y 10.9255707 -d 5000 -n neo4j://localhost:7687 -u neo4j -p passwd -ff footways.json -fcn crossingnodes.json -fcw crossinways.json -fsn streetNodesModena.graphml
+python DataExtractionTotal.py -x 44.645885 -y 10.9255707 -d 5000 -n neo4j://localhost:7687 -u neo4j -p password -fcl cycleways.json -fcn crossingnodes.json -fcw crossingways.json -ff footways.json -fsn streetNodesModena.graphml
 ````
 In this case Modena footways, crossings and street nodes are extracted and stored in geojson files, which allow to save geospatial information, contained in the import folder of the neo4j instance. If cycleways data are already provided, we just need to store them in a geojson file too, otherwise, we need to fetch them from OSM. In this second case, we also need to compute the safety information from others attributes. The parameters passed represent:
 
@@ -57,13 +57,17 @@ In this case Modena footways, crossings and street nodes are extracted and store
 - _fsn_ name of the file where to save the street nodes graph with extention '.graphml' (this file will be created by the script and automatically placed in the import folder of neo4j)
 - _fcl_ name of the file where are already stored cycleways data or where to save the cycleways data
 
+to get only cycleways in a file named cycleways.json:
+````shell command
+python Get_cycleway_from_OSM.py -x 44.645885 -y 10.9255707 -d 5000 -n neo4j://localhost:7687 -u neo4j -p password
+````
 ## Data preprocessing
 
 Data preprocessing of the available data extracted from OSM is necessary in order to find relationships between them, like for example determine if two cycleways intersect.
 Example of how perform total Data Preprocessing:
 
 ````shell command
-python DataPreprocessingTotal.py -x 44.645885 -y 10.9255707 -d 5000 -n neo4j://localhost:7687 -u neo4j -p passwd -fc cycleways.json -fcn crossingnodes.json -fcw crossingways.json -ff footways.json
+python DataPreprocessingTotal.py -x 44.645885 -y 10.9255707 -d 5000 -n neo4j://localhost:7687 -u neo4j -p cavaletti -fc cycleways.json -fcn crossingnodes.json -fcw crossinways.json -ff footways.json
 ````
 The parameters passed are:
 - _x_ latitude of the central point of the area of interest
