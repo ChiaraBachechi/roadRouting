@@ -43,7 +43,7 @@ Example of how to extract footways and crossings from OSM:
 ````shell command
 python DataExtractionTotal.py -x 44.645885 -y 10.9255707 -d 5000 -n neo4j://localhost:7687 -u neo4j -p passwd -ff footways.json -fcn crossingnodes.json -fcw crossinways.json -fsn streetNodesModena.graphml
 ````
-In this case Modena footways, crossings and street nodes are extracted and stored in files contained in the import folder of the neo4j instance. Cycleways data were already provided in a geojson file. The parameters passed represent:
+In this case Modena footways, crossings and street nodes are extracted and stored in geojson files, which allow to save geospatial information, contained in the import folder of the neo4j instance. If cycleways data are already provided, we just need to store them in a geojson file too, otherwise, we need to fetch them from OSM. In this second case, we also need to compute the safety information from others attributes. The parameters passed represent:
 
 - _x_ latitude of the central point of the area of interest
 - _y_ longitude of the central point of the area of interest
