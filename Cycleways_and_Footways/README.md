@@ -67,7 +67,7 @@ Data preprocessing of the available data extracted from OSM is necessary in orde
 Example of how perform total Data Preprocessing:
 
 ````shell command
-python DataPreprocessingTotal.py -x 44.645885 -y 10.9255707 -d 5000 -n neo4j://localhost:7687 -u neo4j -p cavaletti -fc cycleways.json -fcn crossingnodes.json -fcw crossinways.json -ff footways.json
+python DataPreprocessingTotal.py -x 44.645885 -y 10.9255707 -d 5000 -n neo4j://localhost:7687 -u neo4j -p password -fc cycleways.json -fcn crossingnodes.json -fcw crossinways.json -ff footways.json
 ````
 The parameters passed are:
 - _x_ latitude of the central point of the area of interest
