@@ -117,10 +117,6 @@ def main(args=None):
     Elaboration_on_crossing_nodes.preprocessing(gdf_crossing_nodes)
     Elaboration_on_crossing_ways.preprocessing(gdf_crossing_ways)
 
-    print("Elaboration on footways")
-    Elaboration_on_footways.preprocessing(gdf_footways)
-    print("Elaboration on footways : done")
-
     print("Starting elaboration")
     print("Step1")
     Elaboration_on_footways_and_cicleways.find_cycleways_touching_and_close_to_footways(gdf_footways, gdf_cycleways)
