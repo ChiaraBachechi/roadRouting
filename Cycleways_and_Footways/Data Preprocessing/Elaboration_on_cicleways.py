@@ -76,7 +76,7 @@ def read_file(path):
     cycleways = json.load(f)
     df_cycleways = pd.DataFrame(cycleways['data'])
     df_cycleways['geometry'] = df_cycleways['geometry'].apply(wkt.loads)
-    gdf_cycleways = gpd.GeoDataFrame(df_cycleways, crs='epsg:3035')
+    gdf_cycleways = gpd.GeoDataFrame(df_cycleways, crs='epsg:4326')
     gdf_cycleways.drop('index', axis=1, inplace=True)
     return gdf_cycleways
 
@@ -91,7 +91,7 @@ def insert_id_num(gdf_cycleways):
 def compute_length(gdf_cycleways):
     """Compute the length of the whole cycling path"""
 
-    gdf_cycleways.to_crs(epsg=3035)
+    #gdf_cycleways.to_crs(epsg=3035)
     gdf_cycleways['length'] = gdf_cycleways['geometry'].length/2
 
 
@@ -113,7 +113,7 @@ def compute_danger(gdf_cycleways):
 
 def find_touched_lanes(gdf_cycleways):
     """Find cycleways that are touching or intersecting the current one"""
-    gdf_cycleways.to_crs(epsg=3035, inplace=True)
+    #gdf_cycleways.to_crs(epsg=3035, inplace=True)
 
     list_touched_lanes = []
     for i in range(gdf_cycleways.shape[0]):
@@ -136,7 +136,7 @@ def find_touched_lanes(gdf_cycleways):
 
 def find_closest_lanes(gdf_cycleways):
     """Find cycleways that are reachable by crossing the road where the crossing is not signaled"""
-    gdf_cycleways.to_crs(epsg=3035, inplace=True)
+    #gdf_cycleways.to_crs(epsg=3035, inplace=True)
 
     list_closest_lanes = []
     for i in range(gdf_cycleways.shape[0]):
@@ -164,7 +164,7 @@ def save_gdf(gdf_cycleways, path):
     gdf_cycleways.to_crs(epsg=4326, inplace=True)
     df_cycleways = pd.DataFrame(gdf_cycleways)
     df_cycleways['geometry'] = df_cycleways['geometry'].astype(str)
-    df_cycleways.to_json(path + "cycleways.json", orient='table')
+    df_cycleways.to_json(path, orient='table')
 
 
 def preprocessing(gdf_cycleways):
@@ -196,8 +196,9 @@ def main(args=None):
 
     """Read the content of the json file, store it in a geodataframe and apply the preprocessing"""
     gdf_cycleways = read_file(path + options.file_name)
+    gdf_cycleways.to_crs(epsg=3035, inplace=True)
     preprocessing(gdf_cycleways)
-    save_gdf(gdf_cycleways, path + "cycleways.json")
+    save_gdf(gdf_cycleways, path + options.file_name)
 
 
 

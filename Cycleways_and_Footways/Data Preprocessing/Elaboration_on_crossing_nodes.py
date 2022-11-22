@@ -74,7 +74,7 @@ def read_file(path):
     crossing_nodes = json.load(f)
     df_crossing_nodes = pd.DataFrame(crossing_nodes['data'])
     df_crossing_nodes['geometry'] = df_crossing_nodes['geometry'].apply(wkt.loads)
-    gdf_crossing_nodes = gpd.GeoDataFrame(df_crossing_nodes, crs='epsg:3035')
+    gdf_crossing_nodes = gpd.GeoDataFrame(df_crossing_nodes, crs='epsg:4326')
     gdf_crossing_nodes.drop('index', axis=1, inplace=True)
     return gdf_crossing_nodes
 
@@ -93,7 +93,7 @@ def save_gdf(gdf_crossing_nodes, path):
     gdf_crossing_nodes.to_crs(epsg=4326, inplace=True)
     df_crossing_nodes = pd.DataFrame(gdf_crossing_nodes)
     df_crossing_nodes['geometry'] = df_crossing_nodes['geometry'].astype(str)
-    df_crossing_nodes.to_json(path + "crossing_nodes.json", orient='table')
+    df_crossing_nodes.to_json(path, orient='table')
 
 
 def preprocessing(gdf_crossing_nodes):
@@ -110,9 +110,11 @@ def main(args=None):
     path = greeter.get_path()[0][0] + '\\' + greeter.get_import_folder_name()[0][0] + '\\'
 
     """Read the content of the json file, store it in a geodataframe and apply the preprocessing"""
-    gdf_crossing_nodes = gpd.read_file(path + options.file_name, crs={'init': 'epsg:4326'}, geometry='geometry')
+    gdf_crossing_nodes = gpd.read_file(path + options.file_name)
+    gdf_crossing_nodes.to_crs(epsg=3035, inplace=True)
+
     preprocessing(gdf_crossing_nodes)
-    save_gdf(gdf_crossing_nodes, path)
+    save_gdf(gdf_crossing_nodes, path + options.file_name)
 
 
 if __name__ == "__main__":

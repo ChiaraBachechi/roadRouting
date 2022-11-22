@@ -79,7 +79,7 @@ def read_file(path):
     json_file = json.load(f)
     df = pd.DataFrame(json_file['data'])
     df['geometry'] = df['geometry'].apply(wkt.loads)
-    gdf = gpd.GeoDataFrame(df, crs='epsg:3035')
+    gdf = gpd.GeoDataFrame(df, crs='epsg:4326')
     gdf.drop('index', axis=1, inplace=True)
     return gdf
 
@@ -88,9 +88,8 @@ def find_cycleways_touching_and_close_to_footways(gdf_footways, gdf_cycleways):
     """Find cycleways and footways that touch or intersect each other or are reachable by crossing
        the road where the crossing is not signaled.
     """
-
-    gdf_footways.to_crs(epsg=3035, inplace=True)
-    gdf_cycleways.to_crs(epsg=3035, inplace=True)
+    #gdf_footways.to_crs(epsg=3035, inplace=True)
+    #gdf_cycleways.to_crs(epsg=3035, inplace=True)
 
     s2 = gdf_cycleways['geometry']
 
@@ -102,16 +101,16 @@ def find_cycleways_touching_and_close_to_footways(gdf_footways, gdf_cycleways):
     gdf_footways['touched_lanes'] = list_lanes
 
 
-    for index, r in gdf_footways.iterrows(): 
+    for index, r in gdf_footways.iterrows():
+        print(index)
         polygon = r['geometry']
         l_dist = list(s2.distance(polygon))
         for i in range(len(l_dist)):
-        
             if l_dist[i] == 0:
-                gdf_footways[gdf_footways['id_num'] == r.id_num]['touched_lanes'].iloc[0].append(gdf_cycleways.iloc[i].id_num)
+                gdf_footways[gdf_footways['id_num'] == r.id_num]['touched_lanes'].iloc[0].append(gdf_cycleways.iloc[i]['id_num'])
             elif l_dist[i] <= 9 and l_dist[i] > 0:
                 gdf_footways[gdf_footways['id_num'] == r.id_num]['closest_lanes'].iloc[0].append((
-                                                                gdf_cycleways.iloc[i].id_num, l_dist[i]))
+                                                                gdf_cycleways.iloc[i]['id_num'], l_dist[i]))
 
     
 """
@@ -207,14 +206,17 @@ def main(args=None):
     gdf_footways = read_file(path + options.file_name_footways)
     gdf_cycleways = read_file(path + options.file_name_cycleways)
 
+    gdf_footways.to_crs(epsg=3035, inplace=True)
+    gdf_cycleways.to_crs(epsg=3035, inplace=True)
+
     find_cycleways_touching_and_close_to_footways(gdf_footways, gdf_cycleways)
     print("Find the cycleways that touch the footways : done")
 
     #compute_footways_as_crossings(gdf_footways, gdf_cycleways)
     #print("Compute the footways that also act as crossings between cycleways : done")
 
-    save_gdf(gdf_footways, path + "footways.json")
-    save_gdf(gdf_cycleways, path + "cycleways.json")
+    save_gdf(gdf_footways, path + options.file_name_footways)
+    save_gdf(gdf_cycleways, path + options.file_name_cycleways)
 
 
 

@@ -88,7 +88,7 @@ def insert_id_num(gdf_crossing_ways):
 def compute_length(gdf_crossing_ways):
     """Compute the length of the whole crossings mapped as ways"""
 
-    gdf_crossing_ways.to_crs(epsg=3035)
+    #gdf_crossing_ways.to_crs(epsg=3035)
     gdf_crossing_ways['length'] = gdf_crossing_ways['geometry'].length
 
 
@@ -98,7 +98,7 @@ def save_gdf(gdf_crossing_ways, path):
     gdf_crossing_ways.to_crs(epsg=4326, inplace=True)
     df_crossing_ways = pd.DataFrame(gdf_crossing_ways)
     df_crossing_ways['geometry'] = df_crossing_ways['geometry'].astype(str)
-    df_crossing_ways.to_json(path + "crossing_ways.json", orient='table')
+    df_crossing_ways.to_json(path, orient='table')
 
 
 def preprocessing(gdf_crossing_ways):
@@ -121,8 +121,9 @@ def main(args=None):
     """Read the content of the json file, store it in a geodataframe, and apply the preprocessing
     """
     gdf_crossing_ways = read_file(path + options.file_name)
+    gdf_crossing_ways.to_crs(epsg=3035, inplace=True)
     preprocessing(gdf_crossing_ways)
-    save_gdf(gdf_crossing_ways)
+    save_gdf(gdf_crossing_ways, path + options.file_name)
 
 
 

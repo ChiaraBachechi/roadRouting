@@ -79,7 +79,7 @@ def read_file(path):
     json_file = json.load(f)
     df = pd.DataFrame(json_file['data'])
     df['geometry'] = df['geometry'].apply(wkt.loads)
-    gdf = gpd.GeoDataFrame(df, crs='epsg:3035')
+    gdf = gpd.GeoDataFrame(df, crs='epsg:4326')
     gdf.drop('index', axis=1, inplace=True)
     return gdf
 
@@ -87,7 +87,7 @@ def read_file(path):
 def find_footways_close_to_crossing_ways(gdf_footways, gdf_crossing_ways):
     """Find the footways that are close to a signaled crossing mapped as a way"""
 
-    gdf_crossing_ways.to_crs(epsg=3035, inplace=True)
+    #gdf_crossing_ways.to_crs(epsg=3035, inplace=True)
 
     list_closest_footways = []
     for i in range(gdf_crossing_ways.shape[0]):
@@ -98,7 +98,7 @@ def find_footways_close_to_crossing_ways(gdf_footways, gdf_crossing_ways):
     s = gdf_footways['geometry']
 
     for index, r in gdf_crossing_ways.iterrows(): 
-        
+        print(index)
         polygon = r['geometry']
         l = list(s.sindex.query(polygon, predicate="intersects"))
         for i in l:
@@ -137,11 +137,14 @@ def main(args=None):
     gdf_footways = read_file(path + options.file_name_footways)
     gdf_crossing_ways = read_file(path + options.file_name_crossings)
 
+    gdf_footways.to_crs(epsg=3035, inplace=True)
+    gdf_crossing_ways.to_crs(epsg=3035, inplace=True)
+
     """Find relationships between footways and crossings mapped as ways"""
     gdf_crossing_ways = find_footways_close_to_crossing_ways(gdf_footways, gdf_crossing_ways)
     print("Find crossing ways that are close or touching cycleways : done ")
     
-    save_gdf(gdf_crossing_ways, path + "crossing_ways.json")
+    save_gdf(gdf_crossing_ways, path + options.file_name_crossings)
 
 
 if __name__ == "__main__":

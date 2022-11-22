@@ -76,7 +76,7 @@ def read_file(path):
     footways = json.load(f)
     df_footways = pd.DataFrame(footways['data'])
     df_footways['geometry'] = df_footways['geometry'].apply(wkt.loads)
-    gdf_footways = gpd.GeoDataFrame(df_footways, crs='epsg:3035')
+    gdf_footways = gpd.GeoDataFrame(df_footways, crs='epsg:4326')
     gdf_footways.drop('index', axis=1, inplace=True)
     return gdf_footways
 
@@ -91,13 +91,14 @@ def insert_id_num(gdf_footways):
 def compute_length(gdf_footways):
     """Compute the length of the whole pedestrian path"""
 
-    gdf_footways.to_crs(epsg=3035)
+    #gdf_footways.to_crs(epsg=3035, inplace=True)
     gdf_footways['length'] = gdf_footways['geometry'].length
 
 
 def find_touched_footways(gdf_footways):
     """Find footways that are touching or intersecting the current one"""
-    gdf_footways.to_crs(epsg=3035, inplace=True)
+    #gdf_footways.to_crs(epsg=3035, inplace=True)
+    print(gdf_footways['geometry'].head())
 
     list_touched_footways = []
     for i in range(gdf_footways.shape[0]):
@@ -124,15 +125,16 @@ def find_touched_footways(gdf_footways):
 
 def find_closest_footways(gdf_footways):
     """Find footways that are reachable by crossing the road where the crossing is not signaled"""
-    gdf_footways.to_crs(epsg=3035, inplace=True)
+    #gdf_footways.to_crs(epsg=3035, inplace=True)
+    #print(gdf_footways['geometry'].head())
+
+    s = gdf_footways['geometry']
 
     list_closest_footways = []
     for i in range(gdf_footways.shape[0]):
         list_closest_footways.append([])
 
     gdf_footways['closest_footways'] = list_closest_footways
-
-    s = gdf_footways['geometry']
 
     for index, r in gdf_footways.iterrows():
         print(index)
@@ -141,7 +143,7 @@ def find_closest_footways(gdf_footways):
     
         for i in range(len(l_dist)):
             if l_dist[i] <= 20 and l_dist[i] > 0:
-                gdf_footways[gdf_footways['id_num'] == r.id_num]['closest_lanes'].iloc[0].append(
+                gdf_footways[gdf_footways['id_num'] == r.id_num]['closest_footways'].iloc[0].append(
                                                                         (gdf_footways.iloc[i].id_num, l_dist[i]))
                                                             
 
@@ -166,6 +168,8 @@ def preprocessing(gdf_footways):
     find_touched_footways(gdf_footways)
     print("Find footways that touch each other : done")
 
+    print(gdf_footways['touched_footways'].head())
+
     find_closest_footways(gdf_footways)
     print("Find footways that are close to each other, but bot in contact: done")
 
@@ -181,8 +185,9 @@ def main(args=None):
 
     """Read the content of the json file, store it in a geodataframe and apply the preprocessing"""
     gdf_footways = read_file(path + options.file_name)
+    gdf_footways.to_crs(epsg=3035, inplace=True)
     preprocessing(gdf_footways)
-    save_gdf(gdf_footways, path + "footways.json")
+    save_gdf(gdf_footways, path + options.file_name)
 
 
 

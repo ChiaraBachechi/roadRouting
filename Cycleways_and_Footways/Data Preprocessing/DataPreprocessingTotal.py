@@ -99,28 +99,51 @@ def main(args=None):
     greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
     path = greeter.get_path()[0][0] + '\\' + greeter.get_import_folder_name()[0][0] + '\\'
 
+    print("Reading files")
     gdf_cycleways = Elaboration_on_cicleways.read_file(path + options.file_name_cycleways)
-    gdf_footways = Elaboration_on_footways.read_file(options.file_name_footways)
-    gdf_crossing_nodes = Elaboration_on_crossing_nodes.read_file(options.file_name_crossing_nodes)
+    gdf_footways = Elaboration_on_footways.read_file(path + options.file_name_footways)
+    gdf_crossing_nodes = Elaboration_on_crossing_nodes.read_file(path + options.file_name_crossing_nodes)
     gdf_crossing_ways = Elaboration_on_crossing_ways.read_file(path + options.file_name_crossing_ways)
+    print("Reading files : done")
+
+    gdf_footways.to_crs(epsg=3035, inplace=True)
+    gdf_cycleways.to_crs(epsg=3035, inplace=True)
+    gdf_crossing_nodes.to_crs(epsg=3035, inplace=True)
+    gdf_crossing_ways.to_crs(epsg=3035, inplace=True)
+
 
     Elaboration_on_cicleways.preprocessing(gdf_cycleways)
     Elaboration_on_footways.preprocessing(gdf_footways)
     Elaboration_on_crossing_nodes.preprocessing(gdf_crossing_nodes)
     Elaboration_on_crossing_ways.preprocessing(gdf_crossing_ways)
 
+    print("Elaboration on footways")
+    Elaboration_on_footways.preprocessing(gdf_footways)
+    print("Elaboration on footways : done")
+
+    print("Starting elaboration")
+    print("Step1")
     Elaboration_on_footways_and_cicleways.find_cycleways_touching_and_close_to_footways(gdf_footways, gdf_cycleways)
+    print("Step1 : done")
+    print("Step2")
     Elaboration_crossing_nodes_and_cycleways.find_cycleways_close_to_crossing_ways(gdf_cycleways, gdf_crossing_nodes)
+    print("Step2 : done")
+    print("Step3")
     Elaboration_crossing_nodes_and_footways.find_footways_close_to_crossing_nodes(gdf_footways, gdf_crossing_nodes)
+    print("Step3 : done")
+    print("Step4")
     Elaboration_crossing_ways_and_cicleways.find_cycleways_close_to_crossing_ways(gdf_cycleways, gdf_crossing_ways)
+    print("Step4 : done")
+    print("Step5")
     Elaboration_crossing_ways_and_footways.find_footways_close_to_crossing_ways(gdf_footways, gdf_crossing_ways)
+    print("Step5 : done")
 
     Elaboration_street_nodes.preprocessing(gdf_cycleways, gdf_footways, gdf_crossing_ways, options)
 
-    Elaboration_on_cicleways.save_gdf(gdf_cycleways, path)
-    Elaboration_on_footways.save_gdf(gdf_footways, path)
-    Elaboration_on_crossing_nodes.save_gdf(gdf_crossing_nodes, path)
-    Elaboration_on_crossing_ways.save_gdf(gdf_crossing_ways, path)
+    Elaboration_on_cicleways.save_gdf(gdf_cycleways, path + options.file_name_cycleways)
+    Elaboration_on_footways.save_gdf(gdf_footways, path + options.file_name_footways)
+    Elaboration_on_crossing_nodes.save_gdf(gdf_crossing_nodes, path + options.file_name_crossing_nodes)
+    Elaboration_on_crossing_ways.save_gdf(gdf_crossing_ways, path + options.file_name_crossing_ways)
 
 
 main()

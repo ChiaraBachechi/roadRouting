@@ -78,7 +78,7 @@ def read_file(path):
     json_file = json.load(f)
     df = pd.DataFrame(json_file['data'])
     df['geometry'] = df['geometry'].apply(wkt.loads)
-    gdf = gpd.GeoDataFrame(df, crs='epsg:3035')
+    gdf = gpd.GeoDataFrame(df, crs='epsg:4326')
     gdf.drop('index', axis=1, inplace=True)
     return gdf
 
@@ -86,8 +86,8 @@ def read_file(path):
 def find_cycleways_close_to_crossing_ways(gdf_cycleways, gdf_crossing_nodes):
     """Find the cycleways that are close to a signaled crossing mapped as a nodes"""
 
-    gdf_crossing_nodes.to_crs(epsg=3035, inplace=True)
-    gdf_cycleways.to_crs(epsg=3035, inplace=True)
+    #gdf_crossing_nodes.to_crs(epsg=3035, inplace=True)
+    #gdf_cycleways.to_crs(epsg=3035, inplace=True)
 
     list_closest_lanes = []
     for i in range(gdf_crossing_nodes.shape[0]):
@@ -128,11 +128,14 @@ def main(args=None):
     gdf_cycleways = read_file(path + options.file_name_cycleways)
     gdf_crossing_nodes = read_file(path + options.file_name_crossings)
 
+    gdf_cycleways.to_crs(epsg=3035, inplace=True)
+    gdf_crossing_nodes.to_crs(epsg=3035, inplace=True)
+
     """Find relationships between cycleways and crossings mapped as nodes"""
     find_cycleways_close_to_crossing_ways(gdf_cycleways, gdf_crossing_nodes)
     print("Find crossing ways that are close or touching cycleways : done ")
     
-    save_gdf(gdf_crossing_nodes, path + "crossing_nodes.json")
+    save_gdf(gdf_crossing_nodes, path + options.file_name_crossings)
 
 
 

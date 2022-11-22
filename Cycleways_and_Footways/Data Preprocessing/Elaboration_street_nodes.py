@@ -152,8 +152,8 @@ def junction_cross_crossing_ways(gdf_crossing_ways, nodes):
 
 def foot_cross(gdf_footways, nodes):
     """Find street nodes within footways"""
-    nodes.to_crs(epsg=3035, inplace=True)
-    gdf_footways.to_crs(epsg=3035, inplace=True)
+    #nodes.to_crs(epsg=3035, inplace=True)
+    #gdf_footways.to_crs(epsg=3035, inplace=True)
 
     list_foot_cross = []
 
@@ -197,6 +197,7 @@ def preprocessing(gdf_cycleways, gdf_footways, gdf_crossing_ways, options):
 
     nodes, edges = ox.graph_to_gdfs(G_total)
     nodes.reset_index(inplace=True)
+    nodes.to_crs(epsg=3035, inplace=True)
 
     bike_cross_cycleways(gdf_cycleways, nodes)
     print("Creation of column bike_cross in gdf_cycleways GeoDataFrame : done")
@@ -220,12 +221,17 @@ def main(args=None):
     gdf_cycleways = read_file(path + options.file_name_cycleways)
     gdf_crossing_ways = read_file(path + options.file_name_crossing_ways)
     gdf_footways = read_file(path + options.file_name_footways)
+
+    gdf_cycleways.to_crs(epsg=3035, inplace=True)
+    gdf_footways.to_crs(epsg=3035, inplace=True)
+    gdf_crossing_ways.to_crs(epsg=3035, inplace=True)
+
     preprocessing(gdf_cycleways, gdf_footways, gdf_crossing_ways, options)
 
     """Store the results in json files"""
-    save_gdf(gdf_cycleways, path + "cycleways.json")
-    save_gdf(gdf_crossing_ways, path + "crossing_ways.json")
-    save_gdf(gdf_footways, path + "footways.json")
+    save_gdf(gdf_cycleways, path + options.file_name_cycleways)
+    save_gdf(gdf_crossing_ways, path + options.file_name_crossing_ways)
+    save_gdf(gdf_footways, path + options.file_name_footways)
 
 
 
