@@ -142,10 +142,38 @@ def find_closest_footways(gdf_footways):
         l_dist = list(s.distance(polygon))
     
         for i in range(len(l_dist)):
-            if l_dist[i] <= 20 and l_dist[i] > 0:
+            if l_dist[i] <= 9 and l_dist[i] > 0:
                 gdf_footways[gdf_footways['id_num'] == r.id_num]['closest_footways'].iloc[0].append(
                                                                         (gdf_footways.iloc[i].id_num, l_dist[i]))
-                                                            
+
+
+def find_closest_footways_spatial_index(gdf_footways):
+    """Find cycleways that are reachable by crossing the road where the crossing is not signaled"""
+    list_closest_footways = []
+    for i in range(gdf_footways.shape[0]):
+        list_closest_footways.append([])
+
+    gdf_footways['closest_footways'] = list_closest_footways
+    s = gdf_footways['geometry']
+
+    for index, r in gdf_footways.iterrows():
+        polygon = r['geometry']
+        print(index)
+
+        l = list(s.sindex.query(polygon.buffer(9), predicate="intersects"))
+
+        for i in l:
+            if i in r.touched_footways:
+                continue
+            gdf_footways[gdf_footways['id_num'] == r.id_num]['closest_footways'].iloc[0].append(
+                                                                        (gdf_footways.iloc[i].id_num, 7))
+
+        l1 = list(s.sindex.query(polygon, predicate="touches"))
+        for i in l1:
+            if i in r.touched_footways:
+                continue
+            gdf_footways[gdf_footways['id_num'] == r.id_num]['closest_footways'].iloc[0].append(
+                                                                            (gdf_footways.iloc[i].id_num, 9))
 
 
 def save_gdf(gdf_footways, path):
@@ -159,7 +187,7 @@ def save_gdf(gdf_footways, path):
 
 
 def preprocessing(gdf_footways):
-    insert_id_num(gdf_footways)
+    #insert_id_num(gdf_footways)
     print("Insertion of id_num : done")
 
     compute_length(gdf_footways)
@@ -168,9 +196,7 @@ def preprocessing(gdf_footways):
     find_touched_footways(gdf_footways)
     print("Find footways that touch each other : done")
 
-    print(gdf_footways['touched_footways'].head())
-
-    find_closest_footways(gdf_footways)
+    find_closest_footways_spatial_index(gdf_footways)
     print("Find footways that are close to each other, but bot in contact: done")
 
 

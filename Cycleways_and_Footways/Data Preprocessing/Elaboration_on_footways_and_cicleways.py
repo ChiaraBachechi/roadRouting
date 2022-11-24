@@ -112,6 +112,67 @@ def find_cycleways_touching_and_close_to_footways(gdf_footways, gdf_cycleways):
                 gdf_footways[gdf_footways['id_num'] == r.id_num]['closest_lanes'].iloc[0].append((
                                                                 gdf_cycleways.iloc[i]['id_num'], l_dist[i]))
 
+
+
+def find_cycleways_touching_footways_spatial_index(gdf_footways, gdf_cycleways):
+    """Find cycleways that are reachable by crossing the road where the crossing is not signaled"""
+
+    s = gdf_cycleways['geometry']
+
+    list_lanes = []
+    for i in range(gdf_footways.shape[0]):
+        list_lanes.append([])
+
+    gdf_footways['touched_lanes'] = list_lanes
+
+    for index, r in gdf_footways.iterrows():
+        polygon = r['geometry']
+        print(index)
+
+        """ FIND CYCLEWAYS THAT TOUCH OR INTERSECT THE CURRENT FOOTWAY"""
+        l = list(s.sindex.query(polygon, predicate="intersects"))
+        for i in l:
+            gdf_footways[gdf_footways['id_num'] == r.id_num]['touched_lanes'].iloc[0].append(
+                                                                                gdf_cycleways.iloc[i].id_num)
+
+        l1 = list(s.sindex.query(polygon, predicate="touches"))
+        for i in l1:
+            gdf_footways[gdf_footways['id_num'] == r.id_num]['touched_lanes'].iloc[0].append(
+                                                                                gdf_cycleways.iloc[i].id_num)
+
+
+
+def find_cycleways_close_to_footways_spatial_index(gdf_footways, gdf_cycleways):
+    """Find cycleways that are reachable by crossing the road where the crossing is not signaled"""
+
+    s = gdf_cycleways['geometry']
+
+    list_lanes = []
+    for i in range(gdf_footways.shape[0]):
+        list_lanes.append([])
+
+    gdf_footways['closest_lanes'] = list_lanes
+
+
+    for index, r in gdf_footways.iterrows():
+        polygon = r['geometry']
+        print(index)
+
+        """ FIND CYCLEWAYS THAT ARE REACHABLE BY CROSSING THE ROAD WHERE THE CROSSING IS NOT SIGNALED"""
+        l3 = list(s.sindex.query(polygon.buffer(9), predicate="intersects"))
+        for i in l3:
+            if i in r.touched_lanes:
+                continue
+            gdf_footways[gdf_footways['id_num'] == r.id_num]['closest_lanes'].iloc[0].append(
+                                                                            (gdf_cycleways.iloc[i].id_num, 7))
+
+        l4 = list(s.sindex.query(polygon, predicate="touches"))
+        for i in l4:
+            if i in r.touched_lanes:
+                continue
+            gdf_footways[gdf_footways['id_num'] == r.id_num]['closest_lanes'].iloc[0].append(
+                                                                            (gdf_cycleways.iloc[i].id_num, 9))
+
     
 """
 def compute_distance(geom, footway, gdf_cycleways):
@@ -209,8 +270,11 @@ def main(args=None):
     gdf_footways.to_crs(epsg=3035, inplace=True)
     gdf_cycleways.to_crs(epsg=3035, inplace=True)
 
-    find_cycleways_touching_and_close_to_footways(gdf_footways, gdf_cycleways)
+    find_cycleways_touching_footways_spatial_index(gdf_footways, gdf_cycleways)
     print("Find the cycleways that touch the footways : done")
+
+    find_cycleways_close_to_footways_spatial_index(gdf_footways, gdf_cycleways)
+    print("Find the cycleways that are reachable from a footway by crossing the road where the crossing is not signaled : done")
 
     #compute_footways_as_crossings(gdf_footways, gdf_cycleways)
     #print("Compute the footways that also act as crossings between cycleways : done")

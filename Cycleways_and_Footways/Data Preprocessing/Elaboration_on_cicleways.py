@@ -125,6 +125,7 @@ def find_touched_lanes(gdf_cycleways):
 
     for index, r in gdf_cycleways.iterrows():    
         polygon = r['geometry']
+        print(index)
         l = list(s.sindex.query(polygon, predicate="intersects"))
         for i in l:
             gdf_cycleways[gdf_cycleways['id_num'] == r.id_num]['touched_lanes'].iloc[0].append(gdf_cycleways.iloc[i].id_num)
@@ -151,11 +152,39 @@ def find_closest_lanes(gdf_cycleways):
         l_dist = list(s.distance(polygon))
     
         for i in range(len(l_dist)):
-            if l_dist[i] <= 20 and l_dist[i] > 0:
+            if l_dist[i] <= 9 and l_dist[i] > 0:
                 gdf_cycleways[gdf_cycleways['id_num'] == r.id_num]['closest_lanes'].iloc[0].append(
                                                                         (gdf_cycleways.iloc[i].id_num, l_dist[i]))
 
-    
+
+def find_closest_lanes_spatial_index(gdf_cycleways):
+    """Find cycleways that are reachable by crossing the road where the crossing is not signaled"""
+    list_closest_lanes = []
+    for i in range(gdf_cycleways.shape[0]):
+        list_closest_lanes.append([])
+
+    gdf_cycleways['closest_lanes'] = list_closest_lanes
+    s = gdf_cycleways['geometry']
+
+    for index, r in gdf_cycleways.iterrows():
+        polygon = r['geometry']
+        print(index)
+
+        l = list(s.sindex.query(polygon.buffer(9), predicate="intersects"))
+
+        for i in l:
+            if i in r.touched_lanes:
+                continue
+            gdf_cycleways[gdf_cycleways['id_num'] == r.id_num]['closest_lanes'].iloc[0].append(
+                                                                        (gdf_cycleways.iloc[i].id_num, 7))
+
+        l1 = list(s.sindex.query(polygon.buffer(9), predicate="touches"))
+        for i in l1:
+            if i in r.touched_lanes:
+                continue
+            gdf_cycleways[gdf_cycleways['id_num'] == r.id_num]['closest_lanes'].iloc[0].append(
+                (gdf_cycleways.iloc[i].id_num, 9))
+
 
 
 def save_gdf(gdf_cycleways, path):
@@ -168,7 +197,7 @@ def save_gdf(gdf_cycleways, path):
 
 
 def preprocessing(gdf_cycleways):
-    insert_id_num(gdf_cycleways)
+    #insert_id_num(gdf_cycleways)
     print("Insertion of id_num : done")
 
     compute_length(gdf_cycleways)
@@ -180,7 +209,7 @@ def preprocessing(gdf_cycleways):
     find_touched_lanes(gdf_cycleways)
     print("Find cycleways that touch each other : done")
 
-    find_closest_lanes(gdf_cycleways)
+    find_closest_lanes_spatial_index(gdf_cycleways)
     print("Find cycleways that are close to each other, but not in contact: done")
 
 
