@@ -98,10 +98,10 @@ def compute_length(gdf_cycleways):
 def compute_danger(gdf_cycleways):
     """Convert in an integer value the classification attribute"""
 
-    d = {'lontano dal traffico' : 1, 'fisicamente protetto' : 2, 'vicino alla strada' : 3, 'vicino al traffico (L)' : 4, 
+    d = {'lontano dal traffico' : 1, 'fisicamente protetto' : 2, 'fisicamente protetto in sede stradale' : 3, 'vicino al traffico (L)' : 4, 
     'vicino al traffico (V)': 5}
 
-    gdf_cycleways['classifica'].fillna('vicino alla strada', inplace=True)
+    gdf_cycleways['classifica'].fillna('fisicamente protetto in sede stradale', inplace=True)
 
     list_danger = []
     for _, r in gdf_cycleways.iterrows():
@@ -197,7 +197,7 @@ def save_gdf(gdf_cycleways, path):
 
 
 def preprocessing(gdf_cycleways):
-    #insert_id_num(gdf_cycleways)
+    insert_id_num(gdf_cycleways)
     print("Insertion of id_num : done")
 
     compute_length(gdf_cycleways)

@@ -187,7 +187,7 @@ def save_gdf(gdf_footways, path):
 
 
 def preprocessing(gdf_footways):
-    #insert_id_num(gdf_footways)
+    insert_id_num(gdf_footways)
     print("Insertion of id_num : done")
 
     compute_length(gdf_footways)
