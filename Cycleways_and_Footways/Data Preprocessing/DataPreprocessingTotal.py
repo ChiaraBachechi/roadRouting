@@ -112,10 +112,10 @@ def main(args=None):
     gdf_crossing_ways.to_crs(epsg=3035, inplace=True)
 
 
-    #Elaboration_on_cicleways.preprocessing(gdf_cycleways)
-    #Elaboration_on_footways.preprocessing(gdf_footways)
-    #Elaboration_on_crossing_nodes.preprocessing(gdf_crossing_nodes)
-    #Elaboration_on_crossing_ways.preprocessing(gdf_crossing_ways)
+    Elaboration_on_cicleways.preprocessing(gdf_cycleways)
+    Elaboration_on_footways.preprocessing(gdf_footways)
+    Elaboration_on_crossing_nodes.preprocessing(gdf_crossing_nodes)
+    Elaboration_on_crossing_ways.preprocessing(gdf_crossing_ways)
 
     print("Starting elaboration")
     print("Step1")
