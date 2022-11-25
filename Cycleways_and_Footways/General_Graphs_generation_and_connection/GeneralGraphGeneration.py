@@ -5,9 +5,20 @@ import argparse
 import os
 import time
 
-from Cycleways_and_Footways.General_Graphs_generation_and_connection import Nodes_generation
-from Cycleways_and_Footways.General_Graphs_generation_and_connection import Relationships_generation
+import Nodes_generation.BicycleLanes
+import Nodes_generation.Footways
+import Nodes_generation.Crossnodes
+import Nodes_generation.Crossways
+import Nodes_generation.Neighborhoods
 
+import Relationships_generation.Connect_bicyclelanes_to_footways
+import Relationships_generation.Connect_crossingnodes_to_closest_footways
+import Relationships_generation.Connect_crossingnodes_to_closest_lanes
+import Relationships_generation.Connect_crossingways_to_lanes
+import Relationships_generation.Connect_crossingways_to_footways
+import Relationships_generation.Connect_elements_to_neighborhoods
+import Relationships_generation.Connect_poi_to_closest_bicyclelanes
+import Relationships_generation.Connect_poi_to_the_closest_footways
 
 """In this file we are going to show how to generate different layers' general graphs"""
 
@@ -55,33 +66,47 @@ def main(args=None):
     """SECTION 1: GENERATION OF NODES"""
 
     """Generation of cycleways general graph nodes"""
+    print("Generation cycleways nodes")
     greeterCycleways = Nodes_generation.BicycleLanes.App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
     greeterCycleways.import_bicycle_lanes(options.file_name_cycleways)
+    print("Cycleways nodes imported")
     greeterCycleways.import_lanes_in_spatial_layer()
+    print("Cycleways nodes imported in spatial layer")
     greeterCycleways.add_index()
-    greeterCycleways.find_touched_lanes()
-    greeterCycleways.find_closest_lanes(options.file_name_cycleways)
+    print("Index added")
+    greeterCycleways.generate_relationships_touched_lanes()
+    print("Touched lanes relationships generated")
+    greeterCycleways.generate_relationships_closest_lanes(options.file_name_cycleways)
+    print("Closest lanes relationships generated")
     greeterCycleways.close()
+    print("Generation cycleways nodes : done")
 
     """Generation of footways general graph nodes"""
+    print("Generation footways nodes")
     greeterFootways = Nodes_generation.Footways.App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
-    greeterFootways.import_footways(options.file_name)
+    greeterFootways.import_footways(options.file_name_footways)
+    print("Footways nodes imported")
     greeterFootways.import_footways_in_spatial_layer()
+    print("Footways nodes imported in spatial layer")
     greeterFootways.add_index()
-    greeterFootways.find_touched_footways()
-    greeterFootways.find_closest_footways(options.file_name)
+    print("Index added")
+    greeterFootways.generate_relationships_touched_footways()
+    print("Touched footways relationships generated")
+    greeterFootways.generate_relationships_closest_footways(options.file_name_footways)
+    print("Closest footways relationships generated")
     greeterFootways.close()
+    print("Generation footways nodes : done")
 
     """Generation of nodes representing crossings mapped as nodes on OSM"""
     greeterCrossnodes = Nodes_generation.Crossnodes.App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
-    greeterCrossnodes.import_crossnodes(options.file_name)
+    greeterCrossnodes.import_crossnodes(options.file_name_crossing_nodes)
     greeterCrossnodes.compute_location()
     greeterCrossnodes.import_crossnodes_in_spatial_layer()
     greeterCrossnodes.close()
 
     """Generation of nodes representing crossings mapped as ways on OSM"""
     greeterCrossways = Nodes_generation.Crossways.App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
-    greeterCrossways.import_crossways(options.file_name)
+    greeterCrossways.import_crossways(options.file_name_crossing_ways)
     greeterCrossways.import_crossways_in_spatial_layer()
     greeterCrossways.close()
 
@@ -96,9 +121,12 @@ def main(args=None):
     """SECTION 2: GENERATION OF RELATIONSHIPS"""
 
     """Generation of relationships between cycleways and footways general graphs nodes"""
+    print("Connection footways and cycleways layer")
     greeterConnection_BL_FW = Relationships_generation.Connect_bicyclelanes_to_footways.App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
     greeterConnection_BL_FW.connect_footways_to_touched_bicycle_lanes()
+    print("Connection footways and cycleways that intersect or touch ")
     greeterConnection_BL_FW.connect_footways_to_close_lanes(options.file_name_footways)
+    print("Connection footways and cycleways that are reachable by crossing the road")
     greeterConnection_BL_FW.close()
 
     """Generation relationships between crossnodes and footways nodes"""

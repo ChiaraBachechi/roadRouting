@@ -48,6 +48,9 @@ class App:
 
     @staticmethod
     def _import_lanes_in_spatial_layer(tx):
+        tx.run("""
+                call spatial.addWKTLayer('spatial', 'geometry')
+                """)
         result = tx.run("""
                        match(b:BicycleLane) with collect(b) as lanes UNWIND lanes AS l CALL spatial.addNode('spatial', l) yield node return node
         """)
@@ -69,21 +72,26 @@ class App:
 
 
 
-    def find_touched_lanes(self):
+    def generate_relationships_touched_lanes(self):
         """Generate relationships between nodes representing cycleways that touch or intersect"""
 
         with self.driver.session() as session:
-            result = session.write_transaction(self._find_touched_lanes)
+            result = session.write_transaction(self._generate_relationships_touched_lanes)
             return result
 
     
     @staticmethod
-    def _find_touched_lanes(tx):
+    def _generate_relationships_touched_lanes(tx):
         result = tx.run("""
                 match(b:BicycleLane) where NOT isEmpty(b.touched_lanes) unwind b.touched_lanes as cycleway match(b1:BicycleLane) 
                 where b1.id_num="cycleway/" + cycleway
                 merge (b)-[r:CONTINUE_ON_LANE]->(b1)
                 return b, b1
+        """)
+
+        result = tx.run("""
+                match(b:BicycleLane)-[r:CONTINUE_ON_LANE]->(b1:BicycleLane) where b.id_num = b1.id_num
+                delete r
         """)
         #and NOT isEmpty(n1.touched_lanes) and n.geometry <> n1.geometry 
         #result = tx.run("""
@@ -93,19 +101,19 @@ class App:
         return result.values()
 
     
-    def find_closest_lanes(self, file):
+    def generate_relationships_closest_lanes(self, file):
         """Generate relationships between nodes representing cycleways that are reachable by crossing
            the road where the crossing is not signaled
         """
 
         with self.driver.session() as session:
-            result = session.write_transaction(self._find_closest_lanes, file)
+            result = session.write_transaction(self._generate_relationships_closest_lanes, file)
             return result
 
 
     
     @staticmethod
-    def _find_closest_lanes(tx, file):
+    def _generate_relationships_closest_lanes(tx, file):
         result = tx.run("""
             call apoc.load.json($file) yield value as value with value.data as data 
             unwind data as record match (b:BicycleLane) where b.id_num = "cycleway/" + record.id_num and NOT isEmpty(record.closest_lanes)
@@ -164,7 +172,7 @@ def main(args=None):
 
     """Generate relationships between nodes representing cycleways that touch or intersect"""
     start_time = time.time()
-    greeter.find_touched_lanes()
+    greeter.generate_relationships_touched_lanes()
     print("Find the lanes that touches each other: done")
     print("Execution time : %s seconds" % (time.time() - start_time))
 
@@ -172,7 +180,7 @@ def main(args=None):
        the crossing is not signaled
     """
     start_time = time.time()
-    greeter.find_closest_lanes(options.file_name)
+    greeter.generate_relationships_closest_lanes(options.file_name)
     print('Find the lanes that are close to each other: done')
     print("Execution time : %s seconds" % (time.time() - start_time))
 

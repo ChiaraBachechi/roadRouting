@@ -69,15 +69,15 @@ class App:
 
 
 
-    def find_touched_footways(self):
+    def generate_relationships_touched_footways(self):
         """Generate relationships between nodes representing footways that touch or intersect"""
         with self.driver.session() as session:
-            result = session.write_transaction(self._find_touched_footways)
+            result = session.write_transaction(self._generate_relationships_touched_footways)
             return result
 
     
     @staticmethod
-    def _find_touched_footways(tx):
+    def _generate_relationships_touched_footways(tx):
         result = tx.run("""
                 match(n:Footway) where NOT isEmpty(n.touched_footways) unwind n.touched_footways as foot 
                 match(n1:Footway) where n1.id_num="foot/" + foot and NOT isEmpty(n1.touched_footways) 
@@ -93,17 +93,17 @@ class App:
 
 
 
-    def find_closest_footways(self, file):
+    def generate_relationships_closest_footways(self, file):
         """Generate relationships between nodes representing footways reachable by crossing the road where the
            crossing is not signaled
         """
         with self.driver.session() as session:
-            result = session.write_transaction(self._find_closest_footways, file)
+            result = session.write_transaction(self._generate_relationships_closest_footways, file)
             return result
 
     
     @staticmethod
-    def _find_closest_footways(tx, file):
+    def _generate_relationships_closest_footways(tx, file):
         result = tx.run("""
                 call apoc.load.json($file) yield value as value with value.data as data 
                 UNWIND data as record match (f:Footway) where f.id_num = "foot/" + record.id_num and NOT isEmpty(record.closest_footways)
@@ -164,7 +164,7 @@ def main(args=None):
 
     """Generate relationships between nodes representing footways that touch or intersect"""
     start_time = time.time()
-    greeter.find_touched_footways()
+    greeter.generate_relationships_touched_footways()
     print("Connect the footways that touches each other: done")
     print("Execution time : %s seconds" % (time.time() - start_time))
 
@@ -172,7 +172,7 @@ def main(args=None):
        crossing is not signaled
     """
     start_time = time.time()
-    greeter.find_closest_footways(options.file_name)
+    greeter.generate_relationships_closest_footways(options.file_name)
     print("Connect the footways that are close to each other: done")
     print("Execution time : %s seconds" % (time.time() - start_time))
     
