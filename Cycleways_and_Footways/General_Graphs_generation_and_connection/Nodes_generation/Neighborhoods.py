@@ -23,8 +23,8 @@ class App:
     @staticmethod
     def _import_neighborhood_node(tx, file):
         result = tx.run("""
-                        CALL apoc.load.csv($file) YIELD map as lines 
-                        MERGE(n:Neighborhood {id : lines.id}) ON CREATE SET n.geometry = lines.geometry;
+                        call apoc.load.json($file) yield value as value with value.data as data unwind data as record 
+                        MERGE(n:Neighborhood {id : record.id}) ON CREATE SET n.geometry = record.geometry;
                     """, file=file)
 
         return result.values()

@@ -48,6 +48,10 @@ def add_options():
     parser.add_argument('--nameFile', '-fcl', dest='file_name_cycleways', type=str,
                         help="""Insert the name of the cycleways .json file.""",
                         required=True)
+
+    parser.add_argument('--nameFile', '-fnb', dest='file_name_neighborhood', type=str,
+                        help="""Insert the name of the neighborhood .json file.""",
+                        required=True)
     return parser
 
 
@@ -113,6 +117,13 @@ def main(args=None):
     """Extract street nodes data from OSM"""
     getStreetNodes(dist, lat, lon, greeter, options.file_name_streetnodes)
     print("Extracting street nodes : done")
+
+    """Save neighborhoods data in the import folder of the neo4j instance"""
+    gdf_neighborhoods = gpd.read_file("QuartieriModena.geojson",  crs={'init': 'epsg:4326'}, geometry='geometry')
+    path = greeter.get_path()[0][0] + '\\' + greeter.get_import_folder_name()[0][0] + '\\'
+    save_gdf(gdf_neighborhoods, path, options.file_name_neighborhood)
+
+
 
 main()
 

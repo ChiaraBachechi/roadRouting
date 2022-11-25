@@ -41,7 +41,7 @@ Moreover, you will need to install [OSMnx][4], [overpy][5], [pandas][6] and [geo
 Example of how to extract footways and crossings from OSM:
 
 ````shell command
-python DataExtractionTotal.py -x 44.645885 -y 10.9255707 -d 5000 -n neo4j://localhost:7687 -u neo4j -p password -fcl cycleways.json -fcn crossingnodes.json -fcw crossingways.json -ff footways.json -fsn streetNodesModena.graphml
+python DataExtractionTotal.py -x 44.645885 -y 10.9255707 -d 5000 -n neo4j://localhost:7687 -u neo4j -p password -fcl cycleways.json -fcn crossingnodes.json -fcw crossingways.json -ff footways.json -fsn streetNodesModena.graphml -fnb neighborhood.json
 ````
 In this case Modena footways, crossings and street nodes are extracted and stored in geojson files, which allow to save geospatial information, contained in the import folder of the neo4j instance. If cycleways data are already provided, we just need to store them in a geojson file too, otherwise, we need to fetch them from OSM. In this second case, we also need to compute the safety information from others attributes. The parameters passed represent:
 
@@ -56,6 +56,7 @@ In this case Modena footways, crossings and street nodes are extracted and store
 - _fcw_ name of the file where to save crossing ways data (this file will be created by the script and automatically placed in the import folder of neo4j) 
 - _fsn_ name of the file where to save the street nodes graph with extention '.graphml' (this file will be created by the script and automatically placed in the import folder of neo4j)
 - _fcl_ name of the file where are already stored cycleways data or where to save the cycleways data
+- _fnb_ name of the file where to save neighborhood data
 
 to get only cycleways in a file named cycleways.json:
 ````shell command
