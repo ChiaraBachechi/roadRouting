@@ -73,7 +73,7 @@ def read_file(path):
     crossing_ways = json.load(f)
     df_crossing_ways = pd.DataFrame(crossing_ways['data'])
     df_crossing_ways['geometry'] = df_crossing_ways['geometry'].apply(wkt.loads)
-    gdf_crossing_ways = gpd.GeoDataFrame(df_crossing_ways, crs='epsg:3035')
+    gdf_crossing_ways = gpd.GeoDataFrame(df_crossing_ways, crs='epsg:4326')
     gdf_crossing_ways.drop('index', axis=1, inplace=True)
     return gdf_crossing_ways
 

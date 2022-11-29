@@ -29,7 +29,7 @@ class App:
                         MERGE(n:Crossing:CrossWay {id_num : "crossway/" + record.id_num}) ON CREATE SET 
                         n.osm_id = record.id, n.geometry = record.geometry, 
                         n.crossing=record.crossing, n.bicycle=record.bicycle, n.closest_lanes = record.closest_lanes, 
-                        n.closest_footways = record.closest_footways, n.length = record.length
+                        n.closest_footways = record.closest_footways, n.length = record.length, n.junction_crosses = record.junction_cross
                     """, file=file)
 
         return result.values()

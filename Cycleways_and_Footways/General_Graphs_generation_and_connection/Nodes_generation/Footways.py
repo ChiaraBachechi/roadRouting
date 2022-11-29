@@ -27,7 +27,8 @@ class App:
                         call apoc.load.json($file) yield value as value with value.data as data unwind data as record 
                         MERGE(n:Footway {id_num : "foot/" + record.id_num}) 
                         ON CREATE SET n.osm_id = record.id, n.geometry = record.geometry, n.touched_lanes = record.touched_lanes, 
-                        n.touched_footways = record.touched_footways, 
+                        n.touched_footways = record.touched_footways,
+                        n.foot_crosses = record.foot_cross, 
                         n.bicycle=record.bicycle, n.bus=record.bus, n.crossing=record.crossing, 
                         n.cycleway=record.cycleway, n.kerb=record.kerb, n.length = record.length, n.highway = record.highway;
                 """, file=file)

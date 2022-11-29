@@ -134,7 +134,6 @@ def main(args=None):
     print("Step5")
     Elaboration_crossing_ways_and_footways.find_footways_close_to_crossing_ways(gdf_footways, gdf_crossing_ways)
     print("Step5 : done")
-
     Elaboration_street_nodes.preprocessing(gdf_cycleways, gdf_footways, gdf_crossing_ways, options)
 
     Elaboration_on_cicleways.save_gdf(gdf_cycleways, path + options.file_name_cycleways)

@@ -32,7 +32,7 @@ class App:
                         b.lanes=record.lanes, b.cycleway=record.cycleway, b.segregated=record.segregated,
                         b.classifica=record.classifica, b.touched_lanes = record.touched_lanes, 
                         b.length = record.length,
-                        b.danger = record.pericolosità, b.bike_crosses = record.bike_crosses, b.bike_road_junction = record.bike_road_junction,
+                        b.danger = record.pericolosità, b.bike_crosses = record.bike_cross, b.bike_road_junction = record.bike_road_junction,
                         b.road_junction = record.road_junction;
                     """, file=file)
 
@@ -82,11 +82,10 @@ class App:
     
     @staticmethod
     def _generate_relationships_touched_lanes(tx):
-        result = tx.run("""
+        tx.run("""
                 match(b:BicycleLane) where NOT isEmpty(b.touched_lanes) unwind b.touched_lanes as cycleway match(b1:BicycleLane) 
                 where b1.id_num="cycleway/" + cycleway
                 merge (b)-[r:CONTINUE_ON_LANE]->(b1)
-                return b, b1
         """)
 
         result = tx.run("""

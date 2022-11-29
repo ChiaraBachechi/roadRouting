@@ -102,7 +102,7 @@ class App:
     @staticmethod
     def _set_index(tx):
         result = tx.run("""
-                           create index junction_footcross_index for (bk:JunctionBikeCross) on (bk.id);
+                           create index junction_footcross_index for (fc:JunctionFootCross) on (fc.id);
                        """)
         return result.values()
 

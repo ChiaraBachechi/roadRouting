@@ -96,7 +96,6 @@ def find_cycleways_close_to_crossing_ways(gdf_cycleways, gdf_crossing_ways):
 
     s = gdf_cycleways['geometry']
 
-
     for index, r in gdf_crossing_ways.iterrows():
         polygon = r['geometry']
         print(index)
@@ -110,7 +109,7 @@ def find_cycleways_close_to_crossing_ways(gdf_cycleways, gdf_crossing_ways):
             gdf_crossing_ways[gdf_crossing_ways['id_num'] == r.id_num]['closest_lanes'].iloc[0].append(
                 gdf_cycleways.iloc[i].id_num)
 
-    return gdf_crossing_ways
+    print(gdf_crossing_ways['closest_lanes'])
 
 
 
@@ -141,7 +140,7 @@ def main(args=None):
     gdf_crossing_ways.to_crs(epsg=3035, inplace=True)
 
     """Find relationships between cycleways and crossings mapped as ways"""
-    gdf_crossing_ways = find_cycleways_close_to_crossing_ways(gdf_cycleways, gdf_crossing_ways)
+    find_cycleways_close_to_crossing_ways(gdf_cycleways, gdf_crossing_ways)
     print("Find crossing ways that are close or touching cycleways : done ")
     
     save_gdf(gdf_crossing_ways, path + options.file_name_crossings)

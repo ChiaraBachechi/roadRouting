@@ -23,10 +23,6 @@ class App:
 
     @staticmethod
     def _connect_junctions_to_footways(tx, file):
-        tx.run("""
-                call apoc.load.json($file) yield value as value with value.data as data 
-                unwind data as record match(f:Footway) where f.id_num = record.id_num set f.foot_crosses = record.foot_cross;
-                """, file=file)
 
         tx.run("""
                 match(f:Footway) unwind f.foot_crosses as foot_cross with f, foot_cross match(fc:JunctionFootCross) 
@@ -49,11 +45,6 @@ class App:
     @staticmethod
     def _connect_junctions_to_crossings(tx, file):
         tx.run("""
-                call apoc.load.json("crossing_ways.json") yield value as value with value.data as data 
-                unwind data as record match(b:CrossWay) where b.id_num = record.id_num set b.junction_crosses = record.junction_cross;
-                """, file=file)
-
-        tx.run("""
                 match(cw:CrossWay) unwind cw.junction_crosses as junction_cross with cw, junction_cross match(fc:JunctionFootCross) 
                 where fc.id = apoc.convert.toString(junction_cross) with cw, fc merge(cw)-[:CONTAINS]->(fc); 
                 """)
@@ -63,7 +54,7 @@ class App:
                 """)
 
         tx.run("""
-                match(cn:CrossNode) with cn match(fc:JunctionFootCross) where cn.osm_id = "node/" + fc.id merge (cn)<-[:IS_MAPPED]-(fc); ; 
+                match(cn:CrossNode) with cn match(fc:JunctionFootCross) where cn.osm_id = "node/" + fc.id merge (cn)<-[:IS_MAPPED]-(fc);
                 """)
 
         result = tx.run("""
@@ -104,28 +95,39 @@ class App:
                 match(n:JunctionFootCross) set n.id = "junctionfoot/"+n.id;
                 """)
 
-        tx.run("""
+        result = tx.run("""
                 match(n:FootCross) set n.id = "foot/"+n.id;
                 """)
 
+        return result.values()
+
+
+    def createIndexes(self):
+        """Create new indexes for the subgraph"""
+        with self.driver.session() as session:
+            result = session.write_transaction(self._createIndexes)
+            return result
+
+    @staticmethod
+    def _createIndexes(tx):
 
         tx.run("""
-                drop index junction_footcross_index;
-                """)
-        
-        tx.run("""
-                create index junction_footcross_index for (jfc:JunctionFootCross) on (jfc.id);
-                """)
+                        drop index junction_footcross_index;
+                        """)
 
         tx.run("""
-                create index footcross_index for (fc:FootCross) on (fc.id);
-                """)
+                        create index junction_footcross_index for (jfc:JunctionFootCross) on (jfc.id);
+                        """)
+
+        tx.run("""
+                        create index footcross_index for (fc:FootCross) on (fc.id);
+                        """)
 
         result = tx.run("""
-                create index road_footcross_index for (rfj:RoadFootJunction) on (rfj.id);
-                """)
+                        create index road_footcross_index for (rfj:RoadFootJunction) on (rfj.id);
+                        """)
 
-        return result.values()
+        return result
 
 
 
@@ -261,6 +263,10 @@ def main(args=None):
     """Change the label of the street nodes according to which element they are within"""
     greeter.change_of_labels()
     print("Change the labels of JunctionBikeCross in BikeCross : done")
+
+    """Create new indexes on the subgraph to speed up the search"""
+    greeter.createIndexes()
+    print("Create new indexes in the subgraph : done")
 
     """Connect subgraph footways layer to the Road junction layer"""
     greeter.connect_to_road_junctions()

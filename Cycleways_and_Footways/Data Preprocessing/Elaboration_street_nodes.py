@@ -120,36 +120,6 @@ def bike_cross_cycleways(gdf_cycleways, nodes):
 
 
 
-
-
-
-def junction_cross_crossing_ways(gdf_crossing_ways, nodes):
-    """Find street nodes within crossing mapped as ways"""
-
-    list_junction_cross = []
-
-    for i in range(gdf_crossing_ways.shape[0]):
-        list_junction_cross.append([])
-
-    gdf_crossing_ways['junction_cross'] = list_junction_cross
-
-
-    nodes.to_crs(epsg=3035, inplace=True)
-    gdf_crossing_ways.to_crs(epsg=3035, inplace=True)
-
-    s = nodes['geometry'].buffer(2)
-
-    for index, r in gdf_crossing_ways.iterrows():    
-        polygon = r['geometry']
-    
-        l = list(s.sindex.query(polygon, predicate="intersects"))
-        for i in l:
-            gdf_crossing_ways[gdf_crossing_ways['id_num'] == r.id_num]['junction_cross'].iloc[0].append(nodes.iloc[i].osmid)
-
-
-
-
-
 def foot_cross(gdf_footways, nodes):
     """Find street nodes within footways"""
     #nodes.to_crs(epsg=3035, inplace=True)
@@ -173,7 +143,25 @@ def foot_cross(gdf_footways, nodes):
             gdf_footways[gdf_footways['id_num'] == r.id_num]['foot_cross'].iloc[0].append(nodes.iloc[i].osmid)
 
 
-    
+def junction_cross_crossing_ways(gdf_crossing_ways, nodes):
+    """Find street nodes within crossing mapped as ways"""
+
+    list_junction_cross = []
+
+    for i in range(gdf_crossing_ways.shape[0]):
+        list_junction_cross.append([])
+
+    gdf_crossing_ways['junction_crosses'] = list_junction_cross
+
+    s = nodes['geometry'].buffer(2)
+
+    for index, r in gdf_crossing_ways.iterrows():
+        polygon = r['geometry']
+
+        l = list(s.sindex.query(polygon, predicate="intersects"))
+        for i in l:
+            gdf_crossing_ways[gdf_crossing_ways['id_num'] == r.id_num]['junction_crosses'].iloc[0].append(
+                nodes.iloc[i].osmid)
 
 
 def save_gdf(gdf, path):
@@ -184,7 +172,7 @@ def save_gdf(gdf, path):
     gdf.to_crs(epsg=4326, inplace=True)
     df = pd.DataFrame(gdf)
     df['geometry'] = df['geometry'].astype(str)
-    df.to_json(path + "cycleways.json", orient='table')
+    df.to_json(path, orient='table')
 
 
 def preprocessing(gdf_cycleways, gdf_footways, gdf_crossing_ways, options):
@@ -199,11 +187,13 @@ def preprocessing(gdf_cycleways, gdf_footways, gdf_crossing_ways, options):
     nodes.reset_index(inplace=True)
     nodes.to_crs(epsg=3035, inplace=True)
 
-    bike_cross_cycleways(gdf_cycleways, nodes)
+    #bike_cross_cycleways(gdf_cycleways, nodes)
     print("Creation of column bike_cross in gdf_cycleways GeoDataFrame : done")
+    #print(gdf_cycleways['bike_cross'])
 
-    foot_cross(gdf_footways, nodes)
+    #foot_cross(gdf_footways, nodes)
     print("Creation of column foot_cross in gdf_footways GeoDataFrame : done")
+    #print(gdf_footways['foot_cross'])
 
     junction_cross_crossing_ways(gdf_crossing_ways, nodes)
     print("Creation of column bike_cross in gdf_crossing_ways GeoDataFrame : done")

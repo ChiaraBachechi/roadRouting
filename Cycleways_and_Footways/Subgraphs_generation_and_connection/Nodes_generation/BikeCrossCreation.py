@@ -42,10 +42,6 @@ class App:
 
     @staticmethod
     def _connect_junctions_to_crossings(tx, file):
-        tx.run("""
-                call apoc.load.json("crossing_ways.json") yield value as value with value.data as data 
-                unwind data as record match(b:CrossWay) where b.id_num = record.id_num set b.junction_crosses = record.bike_cross;
-                """, file=file)
 
         tx.run("""
                 match(cw:CrossWay) unwind cw.junction_crosses as junction_cross with cw, junction_cross match(bk:JunctionBikeCross) 
@@ -101,27 +97,39 @@ class App:
                 match(n:BikeCross) set n.id = "bike/"+n.id;
                 """)
 
-        tx.run("""
+        result = tx.run("""
                 match(n:RoadBikeJunction) set n.id = "roadbike/"+n.id;
                 """)
 
-        tx.run("""
-                drop index junction_bikecross_index;
-                """)
-        
-        tx.run("""
-                create index junction_bikecross_index for (jbk:JunctionBikeCross) on (jbk.id);
-                """)
+        return result.values()
+
+
+    def createIndexes(self):
+        """Create new indexes for the subgraph"""
+        with self.driver.session() as session:
+            result = session.write_transaction(self._createIndexes)
+            return result
+
+    @staticmethod
+    def _createIndexes(tx):
 
         tx.run("""
-                create index bikecross_index for (bk:BikeCross) on (bk.id);
-                """)
+                        drop index junction_bikecross_index;
+                        """)
+
+        tx.run("""
+                        create index junction_bikecross_index for (jbk:JunctionBikeCross) on (jbk.id);
+                        """)
+
+        tx.run("""
+                        create index bikecross_index for (bk:BikeCross) on (bk.id);
+                        """)
 
         result = tx.run("""
-                create index road_bikecross_index for (rbj:RoadBikeJunction) on (rbj.id);
-                """)
+                        create index road_bikecross_index for (rbj:RoadBikeJunction) on (rbj.id);
+                        """)
 
-        return result.values()
+        return result
 
 
 
@@ -180,7 +188,7 @@ class App:
                 where not exists((rj)-->(bk)) merge (rj)-[r1:BIKE_ROUTE]->(bk) on create set r1.distance = r.distance;
                 """)
 
-        result = tx.run("""
+        tx.run("""
                 MATCH(rbj:RoadBikeJunction)-[:IS_THE_SAME]->(rj:RoadJunction) detach delete rbj;
                 """)
 
@@ -261,6 +269,10 @@ def main(args=None):
     """Change the label of the street nodes according to which element they are within"""
     greeter.change_of_labels()
     print("Change the labels of JunctionBikeCross in BikeCross : done")
+
+    """Create new indexes on the subgraph to speed up the search"""
+    greeter.createIndexes()
+    print("Create new indexes in the subgraph : done")
 
     """Connect subgraph cycleways layer to the Road junction layer"""
     greeter.connect_to_road_junctions()
