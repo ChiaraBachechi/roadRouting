@@ -64,7 +64,7 @@ def main(args=None):
     """SECTION 1: GENERATION OF NODES"""
 
     """Generation of cycleways subgraph nodes and relationships"""
-    '''
+
     print("Generation of cycleways subgraph nodes and relationships")
     greeterJBK = Nodes_generation.JunctionBikeCrossCreation.App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
     greeterJBK.creation_graph(options.file_name)
@@ -83,7 +83,7 @@ def main(args=None):
     greeterBK.change_of_labels()
     greeterBK.createIndexes()
     print("Change labels and create indexes : done")
-    #greeterBK.connect_to_road_junctions()
+    greeterBK.connect_to_road_junctions()
     greeterBK.import_bikecrosses_into_spatial_layer()
     print("junctions imported in the spatial layer")
     greeterBK.close()
@@ -96,10 +96,8 @@ def main(args=None):
     greeterJFC.set_label()
     greeterJFC.set_location()
     greeterJFC.set_distance()
-    '''
-    #greeterJFC = Nodes_generation.JunctionFootCrossCreation.App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
-    #greeterJFC.set_index()
-    #greeterJFC.close()
+    greeterJFC.set_index()
+    greeterJFC.close()
 
     print("Connection_layers")
     greeterFC = Nodes_generation.FootCrossCreation.App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
@@ -110,7 +108,7 @@ def main(args=None):
     greeterFC.change_of_labels()
     greeterFC.createIndexes()
     print("Change labels and create indexes : done")
-    #greeterFC.connect_to_road_junctions()
+    greeterFC.connect_to_road_junctions()
     greeterFC.import_footcrosses_into_spatial_layer()
     print("junctions imported in the spatial layer")
     greeterFC.close()

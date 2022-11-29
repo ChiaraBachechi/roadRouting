@@ -71,6 +71,12 @@ class App:
     @staticmethod
     def _change_of_labels(tx):
         tx.run("""
+                MATCH(n:Node)
+                remove n:Node
+                set n:RoadJunction;
+                """)
+
+        tx.run("""
                 MATCH(bk:JunctionBikeCross)-[:IS_CONTAINED]->(bl:BicycleLane)
                 remove bk:JunctionBikeCross
                 set bk:BikeCross;
