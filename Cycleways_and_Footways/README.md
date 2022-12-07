@@ -122,7 +122,7 @@ The parameters passed are:
 - _u_ user of the local Neo4j instance
 - _p_ password of the local Neo4j instance
 - _fc_ name of the file containing cycleways data
-- _fcn_ name of the file containing crossings mapped as nodes data
+- _f_ name of the file containing the street nodes
 - _fcw_ name of the file containing crossings mapped as ways data
 - _ff_ name of the file containing footways data
 
