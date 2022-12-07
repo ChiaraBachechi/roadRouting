@@ -113,7 +113,7 @@ def main(args=None):
 
     """Generation of Neighborhood nodes"""
     greeterNeighborhoods = Nodes_generation.Neighborhoods.App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
-    greeterNeighborhoods.import_neighborhood_node(options.file_name)
+    greeterNeighborhoods.import_neighborhood_node(options.file_name_neighborhoods)
     greeterNeighborhoods.import_neighborhoods_in_spatial_layer()
 
 
