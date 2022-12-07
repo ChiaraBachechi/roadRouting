@@ -109,7 +109,7 @@ The parameters passed are:
 Example of how to generate cycleways and footways subgraphs:
 
 ````shell command
-python SubgraphGeneration.py -x 44.645885 -y 10.9255707 -d 5000 -n neo4j://localhost:7687 -u neo4j -p passwd -fc cycleways.json -fcn crossingnodes.json -fcw crossingways.json -ff footways.json
+python SubgraphGeneration.py -x 44.645885 -y 10.9255707 -d 5000 -n neo4j://localhost:7687 -u neo4j -p passwd -fc cycleways.json -f bike_graph.graphml -fcw crossingways.json -ff footways.json
 ````
 
 The script allows to generate subgraphs in cycleways and footways layers and also the relationships between nodes of the same subgraph and nodes of different subgraphs. The json files we pass to the script must be the same used to run the GeneralGraphGeneration script. 
