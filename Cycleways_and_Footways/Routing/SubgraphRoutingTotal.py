@@ -10,7 +10,10 @@ from shapely import wkt
 import pandas as pd
 import geopandas as gpd
 
-from Cycleways_and_Footways.Routing import Routing_on_subgraphs
+import Routing_on_subgraphs.GraphProjections
+import Routing_on_subgraphs.Routing_AStar
+import Routing_on_subgraphs.Routing_Dijkstra
+import Routing_on_subgraphs.SetWeights
 
 
 """In this file we are going to show how to perform routing on the subgraphs"""

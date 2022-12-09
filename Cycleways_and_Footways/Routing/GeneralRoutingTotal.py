@@ -9,7 +9,8 @@ from shapely import wkt
 import pandas as pd
 import geopandas as gpd
 
-from Cycleways_and_Footways.Routing import Routing_on_General_graphs
+import Routing_on_General_graphs.Routing
+import Routing_on_General_graphs.SetWeights
 
 
 """In this file we are going to show how to perform routing on the general graphs"""
