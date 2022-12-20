@@ -75,7 +75,7 @@ def add_options():
 def createQueryCrossingWays(dist, lat, lon):
     """Create the query to fetch the data of interest"""
 
-    query = f"""[out:json][timeout:1000];
+    query = f"""[out:json];
                                 (
                                 way(around:{dist},{lat},{lon})["crossing"]->.all;
                                 way(around:{dist},{lat},{lon})[highway="crossing"]->.all;

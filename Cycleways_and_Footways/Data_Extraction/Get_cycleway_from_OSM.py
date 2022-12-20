@@ -71,6 +71,9 @@ def add_options():
 	parser.add_argument('--distance', '-d', dest='dist', type=float,
 						help="""Insert distance (in meters) of the area to be covered""",
 						required=True)
+	parser.add_argument('--filename', '-f', dest='filename', type=float,
+						help="""The name of the file where to store cycleways (json format)""",
+						required=True)
 	return parser
 		
 def elem_to_feature(elem, geomType):
@@ -129,7 +132,26 @@ def createQueryCycleways(dist, lat, lon):
 							   """
 	return query
 
-
+def getDataCycleways(url, query, filename, path):
+	result = requests.get(url, params={'data': query})
+	data = result.json()['elements']
+	"""generating a geodataframe with line geometry"""
+	features = [elem_to_feature(elem, "LineString") for elem in data]
+	gdf = gpd.GeoDataFrame.from_features(features, crs=4326)
+	"""inserting ID in the geodataframe"""
+	list_ids = ["way/"+str(elem["id"]) for elem in data]
+	gdf.insert(0, 'id', list_ids)
+	"""filtering the roads where bicycles are not allowed"""
+	gdf = gdf[gdf['bicycle'] != 'no']
+	"""inserting ID_E for support witht he version employing also data from the ER geoportal"""
+	gdf['ID_E'] = np.NaN
+	df1 = gdf[['id','ID_E','highway','bicycle','foot','lanes','cycleway','segregated','maxspeed','geometry']]
+	df1['maxspeed'] = df1['maxspeed'].astype(float)
+	"""performing classification based on the tag values of OSM data"""
+	df1['classifica'] = df1.apply(classification,axis = 1)
+	"""Save the GeoDataframe in a json file"""
+	save_gdf(df1, path, filename)
+	return query
 
 
 def main(args=None):
@@ -143,25 +165,8 @@ def main(args=None):
 	"""Employ overpass API to get data regarding cycleways"""
 	url = 'http://overpass-api.de/api/interpreter'
 	query = createQueryCycleways(dist, lat, lon)
-	result = requests.get(url, params={'data': query})
-	data = result.json()['elements']
-	"""generating a geodataframe with line geometry"""
-	features = [elem_to_feature(elem, "LineString") for elem in data]
-	gdf = gpd.GeoDataFrame.from_features(features, crs=4326)
-	"""inserting ID in the geodataframe"""
-	list_ids = ["way/"+str(elem["id"]) for elem in data]
-	gdf.insert(0, 'id', list_ids)
 	path = greeter.get_path()[0][0] + '\\' + greeter.get_import_folder_name()[0][0] + '\\'
-	"""filtering the roads where bicycles are not allowed"""
-	gdf = gdf[gdf['bicycle'] != 'no']
-	"""inserting ID_E for support witht he version employing also data from the ER geoportal"""
-	gdf['ID_E'] = np.NaN
-	df1 = gdf[['id','ID_E','highway','bicycle','foot','lanes','cycleway','segregated','maxspeed','geometry']]
-	df1['maxspeed'] = df1['maxspeed'].astype(float)
-	"""performing classification based on the tag values of OSM data"""
-	df1['classifica'] = df1.apply(classification,axis = 1)
-	"""Save the GeoDataframe in a json file"""
-	save_gdf(df1, path, "cycleways.json")
+	getData(url,query,options.filename,path)
 	print("Storing cycleways: done")
 	
 if __name__ == "__main__":

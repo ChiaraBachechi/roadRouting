@@ -122,8 +122,8 @@ def bike_cross_cycleways(gdf_cycleways, nodes):
 
 def foot_cross(gdf_footways, nodes):
     """Find street nodes within footways"""
-    #nodes.to_crs(epsg=3035, inplace=True)
-    #gdf_footways.to_crs(epsg=3035, inplace=True)
+    nodes.to_crs(epsg=3035, inplace=True)
+    gdf_footways.to_crs(epsg=3035, inplace=True)
 
     list_foot_cross = []
 
@@ -187,11 +187,11 @@ def preprocessing(gdf_cycleways, gdf_footways, gdf_crossing_ways, options):
     nodes.reset_index(inplace=True)
     nodes.to_crs(epsg=3035, inplace=True)
 
-    #bike_cross_cycleways(gdf_cycleways, nodes)
+    bike_cross_cycleways(gdf_cycleways, nodes)
     print("Creation of column bike_cross in gdf_cycleways GeoDataFrame : done")
     #print(gdf_cycleways['bike_cross'])
 
-    #foot_cross(gdf_footways, nodes)
+    foot_cross(gdf_footways, nodes)
     print("Creation of column foot_cross in gdf_footways GeoDataFrame : done")
     #print(gdf_footways['foot_cross'])
 

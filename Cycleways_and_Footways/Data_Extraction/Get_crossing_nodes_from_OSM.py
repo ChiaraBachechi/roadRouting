@@ -72,13 +72,11 @@ def add_options():
 def createQueryCrossingNodes(dist, lat, lon):
     """Create the query to fetch the data of interest"""
 
-    query = f"""[out:json][timeout:1000];
+    query = f"""[out:json]
                                     (
                                     node(around:{dist},{lat},{lon})["crossing"]->.all;
-                                    node(around:{dist},{lat},{lon})[highway="crossing"]->.all;
                                     node(around:{dist},{lat},{lon})[footway="crossing"]->.all;
                                     node(around:{dist},{lat},{lon})[cycleway="crossing"]->.all;
-                                    node(around:{dist},{lat},{lon})[crossing="traffic_signals"]->.all;
                                     node(around:{dist},{lat},{lon})[crossing="uncontrolled"]->.all;
                                     node(around:{dist},{lat},{lon})[crossing="marked"]->.all;
                                     node(around:{dist},{lat},{lon})[crossing="unmarked"]->.all;

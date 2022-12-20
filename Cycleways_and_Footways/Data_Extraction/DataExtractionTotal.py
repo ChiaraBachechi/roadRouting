@@ -5,7 +5,7 @@ from Get_footways_from_OSM import createQueryFootways, App
 from Get_crossing_ways_from_OSM import createQueryCrossingWays
 from Get_crossing_nodes_from_OSM import createQueryCrossingNodes
 from GraphmlFileCreation import getStreetNodes
-from Get_cycleway_from_OSM import createQueryCycleways
+from Get_cycleway_from_OSM import createQueryCycleways,getDataCycleways
 from Tools import *
 import os
 
@@ -33,23 +33,23 @@ def add_options():
     parser.add_argument('--distance', '-d', dest='dist', type=float,
                         help="""Insert distance (in meters) of the area to be covered""",
                         required=True)
-    parser.add_argument('--nameFile', '-ff', dest='file_name_footways', type=str,
+    parser.add_argument('--nameFileFootway', '-ff', dest='file_name_footways', type=str,
                         help="""Insert the name of the footways .json file.""",
                         required=True)
-    parser.add_argument('--nameFile', '-fcn', dest='file_name_crossingnodes', type=str,
+    parser.add_argument('--nameFileCrossingNodes', '-fcn', dest='file_name_crossingnodes', type=str,
                         help="""Insert the name of the crossing nodes .json file.""",
                         required=True)
-    parser.add_argument('--nameFile', '-fcw', dest='file_name_crossingways', type=str,
+    parser.add_argument('--nameFileCrossingWays', '-fcw', dest='file_name_crossingways', type=str,
                         help="""Insert the name of the crossing ways .json file.""",
                         required=True)
-    parser.add_argument('--nameFile', '-fsn', dest='file_name_streetnodes', type=str,
+    parser.add_argument('--nameFileStreet', '-fsn', dest='file_name_streetnodes', type=str,
                         help="""Insert the name of the street nodes .graphml file.""",
                         required=True)
-    parser.add_argument('--nameFile', '-fcl', dest='file_name_cycleways', type=str,
+    parser.add_argument('--nameFileCycleway', '-fcl', dest='file_name_cycleways', type=str,
                         help="""Insert the name of the cycleways .json file.""",
                         required=True)
 
-    parser.add_argument('--nameFile', '-fnb', dest='file_name_neighborhood', type=str,
+    parser.add_argument('--nameFileNeighborhood', '-fnb', dest='file_name_neighborhood', type=str,
                         help="""Insert the name of the neighborhood .json file.""",
                         required=True)
     return parser
@@ -88,22 +88,15 @@ def main(args=None):
     greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
     path = greeter.get_path()[0][0] + '\\' + greeter.get_import_folder_name()[0][0] + '\\'
     url = 'http://overpass-api.de/api/interpreter'
-
-    files = [f for f in os.listdir(path) if os.path.isfile(os.path.join(path, f))]
-    if options.file_name_cycleways in files:
-        print("The cycleways data file is already contained in the import folder of the neo4j instance")
-    else:
-        queryCycleways = createQueryCycleways(dist, lat, lon)
-        getData(url, queryCycleways, greeter, "way/", "LineString", options.file_name_cycleways)
-        print("Extracting footways data : done")
-        pass
-
-
+    queryCycleways = createQueryCycleways(dist, lat, lon)
+    getDataCycleways(url, queryCycleways, options.file_name_cycleways, path)
+    print("Extracting CYCLEWAYS data : done")
+    
     """Generate overpass query to fetch footways data and extract them"""
     queryFootways = createQueryFootways(dist, lat, lon)
     getData(url, queryFootways, greeter, "way/", "LineString", options.file_name_footways)
     print("Extracting footways data : done")
-
+    
     """Generate overpass query to fetch crossing nodes data and extract them"""
     queryCrossNodes = createQueryCrossingNodes(dist, lat, lon)
     getData(url, queryCrossNodes, greeter, "node/", "Point", options.file_name_crossingnodes)
