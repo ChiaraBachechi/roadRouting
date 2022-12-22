@@ -26,7 +26,7 @@ class App:
     @staticmethod
     def _connect_poi_to_closest_bicycle_lanes(tx):
         result = tx.run("""
-            match(n:OSMWayNode) with n call spatial.withinDistance('spatial', n.location, 0.1) yield node 
+            match(n:OSMWayNode) with n call spatial.withinDistance('spatial', n, 0.1) yield node 
             unwind(node) as p match(n1) where n1.id_num=p.id_num and p:BicycleLane merge (n1)-[:IS_NEAR_TO]->(n)
         """)
         return result
