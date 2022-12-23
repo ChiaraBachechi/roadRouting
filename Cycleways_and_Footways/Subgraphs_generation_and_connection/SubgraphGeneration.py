@@ -11,6 +11,11 @@ import Nodes_generation.JunctionFootCrossCreation
 import Nodes_generation.FootCrossCreation
 
 import Relationships_generation.ConnectDifferentLayersJunctions
+import sys
+
+sys.path.insert(1, '../routing')
+import Routing_on_subgraphs.GraphProjections
+import Routing_on_subgraphs.SetWeights
 
 """In this file we are going to show how to generate different layers' subgraphs"""
 
@@ -120,6 +125,16 @@ def main(args=None):
     greeterConnectionLayers.delete_roadjunctions_with_same_location_of_footcrosses()
     greeterConnectionLayers.change_labels()
     greeterConnectionLayers.close()
+    
+    """Setting weights on general graph's relationships and create projections"""
+    greeterSetWeights = Routing_on_subgraphs.SetWeights.App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
+    greeterSetWeights.set_relations_weights()
+    greeterSetWeights.close()
+
+    """Create projections"""
+    greeterProj = Routing_on_subgraphs.GraphProjections.App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
+    greeterProj.create_projections()
+    greeterProj.close()
 
     return 0
 
