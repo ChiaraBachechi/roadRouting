@@ -52,6 +52,15 @@ class App:
                            merge (a)-[:AADT2019 {traffic_volume:round(toFloat(row.traffic_volume),2)
                                                          ,year: row.year,osmid: row.id_road_section}]->(b);
                     """)
+        result = tx.run("""
+                        match (d:RoadOsm)
+                        with d 
+                        match (m:RoadJunction)-[r1:ROUTE {osmid: d.osmid, status: 'active'}]->(n:RoadJunction)
+                        with d,avg(r1.AADT) as AADT, sum(r1.distance) as dist,r1.name as road_name
+                        set d.traffic = AADT/dist, 
+                        d.AADT=AADT,d.distance = dist,
+                        d.name= road_name
+                    """)
         return result.values()
 
     def add_route_AADT_property(self):
