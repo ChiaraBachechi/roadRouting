@@ -30,7 +30,7 @@ class App:
             str = """
                 CALL gds.graph.create.cypher(
                     "graph",
-                    "MATCH (n) where n:Node or n:OSMWayNode RETURN id(n) AS id, n.lat AS lat, n.lon AS lon",
+                    "MATCH (n) where n:RoadJunction or n:OSMWayNode RETURN id(n) AS id, n.lat AS lat, n.lon AS lon",
                     "MATCH ()-[r:ROUTE]->() with min(r.AADT) as min_AADT,max(r.AADT) as max_AADT,max(r.distance) as max_dist,min(r.distance) as min_dist MATCH (n)-[r:ROUTE]->(m) WHERE r.status = 'active' RETURN id(n) AS source, id(m) AS target, 0.5 * toFloat((r.AADT-min_AADT)/(max_AADT-min_AADT)) + 0.5 * toFloat((r.distance-min_dist)/(max_dist-min_dist)) as traffic, r.AADT as AADT, r.distance as distance, type(r) as type"
                 )
                         """
@@ -62,7 +62,7 @@ class App:
         if( mode == 'r'):
             str = """match(n:RoadOsm) return count(n)"""
         else:
-            str = """match(n:Node) return count(n)"""
+            str = """match(n:RoadJunction) return count(n)"""
         result = tx.run(str)
         return result.values()
 
@@ -78,7 +78,7 @@ class App:
         if( mode == 'r'):
             str = """match ()-[r:CONNECTED]->() return count(*)"""
         else:
-            str = """match (:Node)-[r:ROUTE]->(:Node) return count(*)"""
+            str = """match (:RoadJunction)-[r:ROUTE]->(:RoadJunction) return count(*)"""
         result = tx.run(str)
         return result.values()
 

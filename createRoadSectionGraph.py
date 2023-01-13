@@ -21,12 +21,12 @@ class App:
     def _creation_graph(tx):
         #creation of nodes, a node for each street
         result = tx.run("""
-                        match (m)-[r:ROUTE {status: 'active'}]->(n) 
+                        match (m:RoadJunction)-[r:ROUTE {status: 'active'}]->(n:RoadJunction) 
                         with distinct r.osmid as street_names
                         unwind street_names as street_name
                         create (road:RoadOsm {osmid: street_name})
                         with street_name
-                        match (m)-[r1:ROUTE {osmid: street_name, status: 'active'}]->(n)
+                        match (m:RoadJunction)-[r1:ROUTE {osmid: street_name, status: 'active'}]->(n:RoadJunction)
                         with avg(r1.AADT) as AADT, sum(r1.distance) as dist,street_name,r1.name as road_name
                         match (d:RoadOsm {osmid: street_name}) set d.traffic = AADT/dist, 
                                         d.AADT=AADT,d.distance = dist,d.name= road_name
@@ -35,12 +35,12 @@ class App:
         #creation of relations, a relation for each connection 
         #(a junction will be represented by more than one connection)
         result = tx.run("""
-                        match (m)-[r:ROUTE]->(n) 
+                        match (m:RoadJunction)-[r:ROUTE]->(n:RoadJunction) 
                         with distinct r.osmid as street_names
                         unwind street_names as street_name
-                        match (m)-[r1:ROUTE {osmid: street_name}]->(n)
+                        match (m:RoadJunction)-[r1:ROUTE {osmid: street_name}]->(n:RoadJunction)
                         with m,street_name
-                        match (x)-[r2:ROUTE]->(m)
+                        match (x:RoadJunction)-[r2:ROUTE]->(m:RoadJunction)
                         where r2.osmid <> street_name
                         with r2.osmid as source,street_name,m
                         match (r1:RoadOsm {osmid:source}),(r2:RoadOsm {osmid:street_name})
@@ -48,7 +48,19 @@ class App:
                     """)
         print(result.values())
         return result.values()
+        
+    def set_index(self):
+        """create index on nodes"""
+        with self.driver.session() as session:
+            result = session.write_transaction(self._set_index)
+            return result
 
+    @staticmethod
+    def _set_index(tx):
+        result = tx.run("""
+                           create index on :RoadOsm(osmid)
+                       """)
+        return result.values()
 
 def add_options():
     parser = argparse.ArgumentParser(description='Creation of routing graph.')
@@ -63,7 +75,6 @@ def add_options():
                         required=True)
     return parser
 
-
 def main(args=None):
     argParser = add_options()
     #retrieve arguments
@@ -72,6 +83,8 @@ def main(args=None):
     greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
     #creation of the dual graph
     greeter.creation_graph()
+    #set index on road nodes
+    greeter.set_index()
     greeter.close()
     return 0
 

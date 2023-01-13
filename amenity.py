@@ -110,6 +110,7 @@ class App:
                 CALL spatial.addNode('spatial', n) yield node return node;
                 """)
         return result.values()
+
     def connect_amenity(self):
         """Connect the OSMWayNode of the POI to the nearest Node in the graph."""
         with self.driver.session() as session:
@@ -121,7 +122,7 @@ class App:
                         MATCH (p:OSMWayNode)
                             WHERE NOT (p)-[:ROUTE]->()
                         WITH p, p.location AS poi
-                        MATCH (n:Node)
+                        MATCH (n:RoadJunction)
                             WHERE distance(n.location, poi) < 100
                             AND n <> p
                         WITH n, p, distance(n.location, poi) AS dist ORDER BY dist
@@ -131,6 +132,33 @@ class App:
                         MERGE (p)<-[ri:ROUTE]-(nv)
                             ON CREATE SET ri.distance = distance(nv.location, p.location), ri.status = 'active'
                     """)
+        return result.values()
+
+    def set_location(self):
+       """Insert the location in the OSMWayNode."""
+        with self.driver.session() as session:
+            result = session.write_transaction(self._set_location)
+    
+    @staticmethod
+    def _set_location(tx):
+       result = tx.run("""MATCH (n:OSMWayNode) SET n.location = point({latitude: tofloat(n.lat), longitude: tofloat(n.lon)})""")
+       return result.values()
+       
+    def set_index(self):
+        """create index on nodes"""
+        with self.driver.session() as session:
+            result = session.write_transaction(self._set_index)
+            return result
+
+    @staticmethod
+    def _set_index(tx):
+        result = tx.run("""
+                           create index on :OSMWayNode(osm_id);
+                       """)
+        result = tx.run("""
+                           create index on :PointOfInterest(osm_id);
+                       """)
+        return result.values()
 
 
 def add_options():
@@ -247,6 +275,8 @@ def main(args=None):
     #adding the nodes to the spatial layer
     if (options.spatial == 'True'):
         greeter.import_nodes_into_spatial_layer()
+    #adding the location property to the OSMWayNodes
+    greeter.set_location()
     #connect POI with roads layer
     greeter.connect_amenity()
     greeter.close()

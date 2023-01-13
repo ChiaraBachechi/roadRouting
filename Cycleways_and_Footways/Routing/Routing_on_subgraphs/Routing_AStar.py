@@ -63,7 +63,7 @@ class App:
         result = tx.run("""
                 MATCH(t:Tag)<-[:TAGS]-(poi:PointOfInterest)-[:MEMBER]->(osm:OSMWayNode) 
                 where t.name =  $dest 
-                with osm CALL spatial.withinDistance('spatial', osm.location, 0.01) yield node unwind(node) as n 
+                with osm CALL spatial.withinDistance('spatial', osm, 0.01) yield node unwind(node) as n 
                 match(j:Junction) where j.id = n.id and n:Junction  with collect(j)[0] as target 
                 with target call spatial.withinDistance('spatial', point({latitude:$lat, longitude:$lon}), 0.01) 
                 yield node unwind(node) as n match(j:Junction) where j.id = n.id and n:Junction with collect(j)[0] as source, target 
@@ -101,7 +101,7 @@ class App:
         result = tx.run("""
                 MATCH(t:Tag)<-[:TAGS]-(poi:PointOfInterest)-[:MEMBER]->(osm:OSMWayNode) 
                 where t.name =  $dest 
-                with osm CALL spatial.withinDistance('spatial', osm.location, 0.01) yield node unwind(node) as n 
+                with osm CALL spatial.withinDistance('spatial', osm, 0.01) yield node unwind(node) as n 
                 match(j:Junction) where j.id = n.id and n:Junction  with collect(j)[0] as target 
                 with target call spatial.withinDistance('spatial', point({latitude:$lat, longitude:$lon}), 0.01) 
                 yield node unwind(node) as n match(j:Junction) where j.id = n.id and n:Junction with collect(j)[0] as source, target 

@@ -26,26 +26,26 @@ class App:
     @staticmethod
     def _create_projections(tx):
         tx.run("""
-                call gds.graph.project('bike_routes_cost', ['BikeCross', 'FootCross', 'JunctionBikeCross', 'JunctionFootCross', 'RoadBikeJunction', 'RoadFootJunction', 'RoadJunction'], 
-                ['BIKE_ROUTE', 'FOOT_ROUTE', 'IS_THE_SAME', 'ROUTE'], 
+                call gds.graph.create('bike_routes_cost', ['BikeCross', 'FootCross', 'JunctionBikeCross', 'JunctionFootCross', 'RoadBikeJunction', 'RoadFootJunction'], 
+                ['BIKE_ROUTE', 'FOOT_ROUTE', 'IS_THE_SAME'], 
                 {nodeProperties: ['lat', 'lon'], relationshipProperties: 'cost'});
                 """)
 
         tx.run("""
-                call gds.graph.project('bike_routes_travel_time', ['BikeCross', 'FootCross', 'JunctionBikeCross', 'JunctionFootCross', 'RoadBikeJunction', 'RoadFootJunction', 'RoadJunction'], 
-                ['BIKE_ROUTE', 'FOOT_ROUTE', 'IS_THE_SAME', 'ROUTE'], 
+                call gds.graph.create('bike_routes_travel_time', ['BikeCross', 'FootCross', 'JunctionBikeCross', 'JunctionFootCross', 'RoadBikeJunction', 'RoadFootJunction'], 
+                ['BIKE_ROUTE', 'FOOT_ROUTE', 'IS_THE_SAME'], 
                 {nodeProperties: ['lat', 'lon'], relationshipProperties: 'travel_time'});
                 """)
 
         tx.run("""
-                call gds.graph.project('foot_routes_cost', ['FootCross', 'JunctionFootCross', 'RoadFootJunction', 'RoadJunction'], 
-                ['FOOT_ROUTE', 'ROUTE'], 
+                call gds.graph.create('foot_routes_cost', ['FootCross', 'JunctionFootCross', 'RoadFootJunction'], 
+                ['FOOT_ROUTE'], 
                 {nodeProperties: ['lat', 'lon'], relationshipProperties: 'cost'});
                 """)
 
         result = tx.run("""
-                call gds.graph.project('foot_routes_travel_time', ['FootCross', 'JunctionFootCross', 'RoadFootJunction', 'RoadJunction'], 
-                ['FOOT_ROUTE', 'ROUTE'], 
+                call gds.graph.create('foot_routes_travel_time', ['FootCross', 'JunctionFootCross', 'RoadFootJunction'], 
+                ['FOOT_ROUTE'], 
                 {nodeProperties: ['lat', 'lon'], relationshipProperties: 'travel_time'});
                 """)
 

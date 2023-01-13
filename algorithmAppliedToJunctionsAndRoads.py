@@ -33,7 +33,7 @@ class App:
             str = """
                 CALL gds.graph.create.cypher(
                     "j",
-                    "MATCH (n) where n:Node or n:OSMWayNode RETURN id(n) AS id, n.lat AS lat, n.lon AS lon",
+                    "MATCH (n) where n:RoadJunction or n:OSMWayNode RETURN id(n) AS id, n.lat AS lat, n.lon AS lon",
                     "MATCH ()-[r:ROUTE]->() with min(r.AADT) as min_AADT,max(r.AADT) as max_AADT,max(r.distance) as max_dist,min(r.distance) as min_dist MATCH (n)-[r:ROUTE]->(m) WHERE r.status = 'active' RETURN id(n) AS source, id(m) AS target, toFloat(r.AADT) / toFloat(r.distance) as traffic, r.AADT as AADT, r.distance as distance, type(r) as type"
                 )
                         """
@@ -108,7 +108,7 @@ class App:
     @staticmethod
     def _get_important_junctions(tx,property):
         result = tx.run("""
-                    match (n:Node) return n.id as osmid,n.lat as latitude,n.lon as longitude,n.""" + property + """ as score order by score desc""")
+                    match (n:RoadJunction) return n.id as osmid,n.lat as latitude,n.lon as longitude,n.""" + property + """ as score order by score desc""")
         df = pd.DataFrame(result.values(),columns = result.keys())
         print(df.head())
         return df
@@ -123,7 +123,7 @@ class App:
     @staticmethod
     def _update_property(tx):
         result = tx.run("""
-                    match (n:Node)
+                    match (n:RoadJunction)
                     with n.id as id_junction,n.degree as degree
                     match (:RoadOsm)-[c:CONNECTED {junction: id_junction}]->(:RoadOsm)
                     set c.score = degree

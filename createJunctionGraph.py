@@ -59,7 +59,7 @@ class App:
     @staticmethod
     def _creation_label(tx):
         result = tx.run("""
-                        MATCH (n) SET n:Node;
+                        MATCH (n) SET n:RoadJunction;
                     """)
         return result.values()
 
@@ -72,9 +72,10 @@ class App:
     @staticmethod
     def _creation_location(tx):
         result = tx.run("""
-                           MATCH (n:Node) SET n.location = point({latitude: tofloat(n.y), longitude: tofloat(n.x)}),
+                           MATCH (n:RoadJunction) SET n.location = point({latitude: tofloat(n.y), longitude: tofloat(n.x)}),
                                             n.lat = tofloat(n.y), 
-                                            n.lon = tofloat(n.x);
+                                            n.lon = tofloat(n.x),
+                                            n.geometry='POINT(' + n.y + ' ' + n.x +')';
                        """)
         return result.values()
 
@@ -87,7 +88,7 @@ class App:
     @staticmethod
     def _set_distance(tx):
         result = tx.run("""
-                           MATCH (n:Node)-[r:ROUTE]-() SET r.distance=tofloat(r.length), r.status='active'
+                           MATCH (n:RoadJunction)-[r:ROUTE]-() SET r.distance=tofloat(r.length), r.status='active'
                        """)
         return result.values()
     
@@ -100,8 +101,39 @@ class App:
     @staticmethod
     def _set_index(tx):
         result = tx.run("""
-                           create index on :Node(id)
+                           create index on :RoadJunction(id)
                        """)
+        return result.values()
+        
+    def generate_spatial_layer(self):
+        """generate the spatial layer of the project"""
+        with self.driver.session() as session:
+            result = session.write_transaction(self._generate_spatial_layer)
+            return result
+
+    @staticmethod
+    def _generate_spatial_layer(tx):
+        result = tx.run("""
+                call spatial.layers()
+                """)
+        if len(result.values()) == 0:
+            result = tx.run("""
+                call spatial.addWKTLayer('spatial', 'geometry')
+                """)
+        return result.values()
+        
+    def import_nodes_in_spatial_layer(self):
+        """insert the road junctions in the spatial layer of the project"""
+        with self.driver.session() as session:
+            result = session.write_transaction(self._import_nodes_in_spatial_layer)
+            return result
+
+    @staticmethod
+    def _import_nodes_in_spatial_layer(tx):
+        result = tx.run("""
+        match (n:RoadJunction)
+        CALL spatial.addNode('spatial', n) yield node return node;
+        """)
         return result.values()
 
 
@@ -146,6 +178,8 @@ def main(args=None):
                             network_type='drive'
                             )
     ox.save_graphml(G, path)
+    #check if there is a spatial layer and if there is not generate it
+    greeter.generate_spatial_layer()
     #creating the graph
     greeter.creation_graph(options.file_name)
     #setting nodes' labels
@@ -156,6 +190,8 @@ def main(args=None):
     greeter.set_distance()
     #setting index
     greeter.set_index()
+    #inserting the nodes in the spatial layer
+    
     greeter.close()
 
     return 0

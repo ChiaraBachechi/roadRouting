@@ -26,10 +26,10 @@ class App:
                         SET r.status='close' 
 
                     WITH r 
-                    MATCH (p:PointOfInterest)-[:MEMBER]->(wn:OSMWayNode)-[re:ROUTE]-(:Node)-[r]-(:Node) 
+                    MATCH (p:PointOfInterest)-[:MEMBER]->(wn:OSMWayNode)-[re:ROUTE]-(:RoadJunction)-[r]-(:RoadJunction) 
                         DELETE re 
                     WITH wn, wn.location AS poi 
-                    MATCH (n:Node)-[ra:ROUTE]-(:Node) 
+                    MATCH (n:RoadJunction)-[ra:ROUTE]-(:RoadJunction) 
                         WHERE n <> wn 
                         AND distance(n.location, poi) < 100 
                         AND ra.status = 'active' 

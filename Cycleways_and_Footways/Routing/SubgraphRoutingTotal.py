@@ -47,7 +47,7 @@ def add_options():
                         required=True)
     parser.add_argument('--nameFile', '-f', dest='file_name', type=str,
                         help="""Insert the name of the .graphml file.""",
-                        required=True)
+                        required=False)
     parser.add_argument('--nameFilecycleways', '-fcl', dest='file_name_cycleways', type=str,
                         help="""Insert the name of the .json file containing the cycleways.""",
                         required=True)
@@ -73,14 +73,14 @@ def main(args=None):
     options = argParser.parse_args(args=args)
 
     """Setting weights on general graph's relationships and create projections"""
-    greeterSetWeights = Routing_on_subgraphs.SetWeights.App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
-    greeterSetWeights.set_relations_weights()
-    greeterSetWeights.close()
+    #greeterSetWeights = Routing_on_subgraphs.SetWeights.App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
+    #greeterSetWeights.set_relations_weights()
+    #greeterSetWeights.close()
 
     """Create projections"""
-    greeterProj = Routing_on_subgraphs.GraphProjections.App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
-    greeterProj.create_projections()
-    greeterProj.close()
+    #greeterProj = Routing_on_subgraphs.GraphProjections.App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
+    #greeterProj.create_projections()
+    #greeterProj.close()
 
 
     if options.pathfinding_algorithm == "dijkstra":
@@ -96,7 +96,7 @@ def main(args=None):
         graph_projection = ""
         if options.mode == 'cycleways':
             graph_projection = "bike_routes"
-        else:
+        elif options.mode == 'footways':
             graph_projection = "foot_routes"
 
         """Extract cycleways and footways data from their json files"""

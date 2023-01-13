@@ -47,8 +47,8 @@ class App:
     def _import_traffic(tx):
         result = tx.run("""
                         load csv with headers from 'file:///traffic.csv' as row
-                           match (a:Node {id: row.node_start})
-                           match(b:Node {id: row.node_end})
+                           match (a:RoadJunction {id: row.node_start})
+                           match(b:RoadJunction {id: row.node_end})
                            merge (a)-[:AADT2019 {traffic_volume:round(toFloat(row.traffic_volume),2)
                                                          ,year: row.year,osmid: row.id_road_section}]->(b);
                     """)
@@ -64,9 +64,9 @@ class App:
     def _add_route_AADT_property(tx):
         result = tx.run("""
                         load csv with headers from 'file:///traffic.csv' as row
-                           match (a:Node {id: row.node_start})-[route:ROUTE]->(b:Node {id: row.node_end})
+                           match (a:RoadJunction {id: row.node_start})-[route:ROUTE]->(b:RoadJunction {id: row.node_end})
                            call { with row
-                                  match (a:Node {id: row.node_start})-[r:AADT2019]->(b:Node {id: row.node_end})
+                                  match (a:RoadJunction {id: row.node_start})-[r:AADT2019]->(b:RoadJunction {id: row.node_end})
                                   return avg(r.traffic_volume) as avgTraf
                                 }
                            set route.AADT = avgTraf;
@@ -83,18 +83,18 @@ class App:
     def _estimate_AADT_property(tx):
         #considering nearest AADT relationships
         result = tx.run("""
-                        MATCH (n:Node)-[route:ROUTE]->(m:Node)  WHERE NOT EXISTS(route.AADT)
+                        MATCH (n:RoadJunction)-[route:ROUTE]->(m:RoadJunction)  WHERE NOT EXISTS(route.AADT)
                            call { with n
-                                  match (n)-[r:AADT2019*1..5]->(b:Node)
+                                  match (n)-[r:AADT2019*1..5]->(b:RoadJunction)
                                   unwind r as p
                                   return avg(p.traffic_volume) as avgTraf
                                 }
                            set route.AADT = avgTraf
                     """)
         result = tx.run("""
-                        MATCH (n:Node)-[route:ROUTE]->(m:Node)  WHERE NOT EXISTS(route.AADT)
+                        MATCH (n:RoadJunction)-[route:ROUTE]->(m:RoadJunction)  WHERE NOT EXISTS(route.AADT)
                            call { with n
-                                  match (n)-[r:ROUTE*1..3]->(b:Node)
+                                  match (n)-[r:ROUTE*1..3]->(b:RoadJunction)
                                   unwind r as p
                                   return avg(p.AADT) as avgTraf
                                 }
@@ -111,7 +111,7 @@ class App:
     @staticmethod    
     def _find_highway_types(tx):
         result = tx.run("""
-                        MATCH (:Node)-[route:ROUTE]->(:Node)
+                        MATCH (:RoadJunction)-[route:ROUTE]->(:RoadJunction)
                                  return route.highway,round(avg(route.AADT),2) as mean
         """)
         return result.values()
