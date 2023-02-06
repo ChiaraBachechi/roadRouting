@@ -28,7 +28,7 @@ class App:
                         with street_name
                         match (m:RoadJunction)-[r1:ROUTE {osmid: street_name, status: 'active'}]->(n:RoadJunction)
                         with avg(r1.AADT) as AADT, sum(r1.distance) as dist,street_name,r1.name as road_name
-                        match (d:RoadOsm {osmid: street_name}) set d.traffic = AADT/dist, 
+                        match (d:RoadOsm {osmid: street_name}) set d.traffic = AADT/dist, status = 'active',
                                         d.AADT=AADT,d.distance = dist,d.name= road_name
                     """)
         print(result.values())

@@ -120,17 +120,14 @@ class App:
     def _connect_amenity(tx):
         result = tx.run("""
                         MATCH (p:OSMWayNode)
-                            WHERE NOT (p)-[:ROUTE]->()
                         WITH p, p.location AS poi
                         MATCH (n:RoadJunction)
                             WHERE distance(n.location, poi) < 100
                             AND n <> p
-                        WITH n, p, distance(n.location, poi) AS dist ORDER BY dist
-                        WITH head(collect(n)) AS nv, p
-                        MERGE (p)-[r:ROUTE]->(nv)
-                            ON CREATE SET r.distance = distance(nv.location, p.location), r.status = 'active'
-                        MERGE (p)<-[ri:ROUTE]-(nv)
-                            ON CREATE SET ri.distance = distance(nv.location, p.location), ri.status = 'active'
+                        MERGE (p)-[r:ROUTE]->(n)
+                            ON CREATE SET r.distance = distance(n.location, p.location), r.status = 'active'
+                        MERGE (p)<-[ri:ROUTE]-(n)
+                            ON CREATE SET ri.distance = distance(n.location, p.location), ri.status = 'active'
                     """)
         return result.values()
 
