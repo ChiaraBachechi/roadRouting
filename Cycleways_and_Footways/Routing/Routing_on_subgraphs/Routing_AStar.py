@@ -87,6 +87,25 @@ class App:
                 """, lat=lat, lon=lon, dest=dest, projection=projection)
 
         return result.values()
+        
+    def get_the_nearest_junction_to_POI(self, osmid):
+        """Routing considering as weight the cost, which is a tradeoff between the travel time and
+           the safety of the path
+        """
+        with self.driver.session() as session:
+            print(dest)
+            result = session.write_transaction(self._get_the_nearest_junction_to_POI, osmid)
+            return result
+
+    @staticmethod
+    def _get_the_nearest_junction_to_POI(tx, osmid):
+        result = tx.run("""match (p:PointOfInterest {osm_id: $osmid}) 
+                            match (p)-[:MEMBER]->(o:OSMWayNode)
+                            match (o)<-[:IS_NEAR_TO]-(m) with point({latitude: tofloat(o.lat), longitude: tofloat(o.lon)}) as location,m
+                            match (m)-[:CONTAINS]->(j:Junction)
+                            return distance(location,j.location) as distance, j.id
+                            order by distance limit 1""",osmid = osmid)
+        return result.values()
 
 
     def routing_algorithm_based_on_travel_time(self, lat, lon, dest, projection):
@@ -97,20 +116,14 @@ class App:
 
     
     @staticmethod
-    def _routing_algorithm_based_on_travel_time(tx, lat, lon, dest, projection):
+    def _routing_algorithm(tx, source, target, projection, mode):
         result = tx.run("""
-                MATCH(t:Tag)<-[:TAGS]-(poi:PointOfInterest)-[:MEMBER]->(osm:OSMWayNode) 
-                where t.name =  $dest 
-                with osm CALL spatial.withinDistance('spatial', osm, 0.01) yield node unwind(node) as n 
-                match(j:Junction) where j.id = n.id and n:Junction  with collect(j)[0] as target 
-                with target call spatial.withinDistance('spatial', point({latitude:$lat, longitude:$lon}), 0.01) 
-                yield node unwind(node) as n match(j:Junction) where j.id = n.id and n:Junction with collect(j)[0] as source, target 
+                match (source:Junction {id: $source})
+                match (target:Junction {id: $target})
                 CALL gds.shortestPath.astar.stream($projection, {
                 sourceNode: source,
                 targetNode: target,
-                latitudeProperty: 'lat',
-                longitudeProperty: 'lon',
-                relationshipWeightProperty: 'travel_time'
+                relationshipWeightProperty: $mode
                 })
                 YIELD index, sourceNode, targetNode, totalCost, nodeIds, costs, path
                 with index,
@@ -120,10 +133,9 @@ class App:
                     [nodeId IN nodeIds | gds.util.asNode(nodeId).id] AS nodeIDs,
                     costs,
                     nodes(path) as nodespath
-                match(n)-[:CONTAINS]->(j:Junction) where j.id in nodeIDs with collect(distinct(n.id_num)) as path, nodeIDs, totalCost 
-                return path, nodeIDs, totalCost
-                """, lat=lat, lon=lon, dest=dest, projection=projection)
-
+                match(n)-[:CONTAINS]->(j:Junction) where j.id in nodeIDs with collect(distinct(n.id_num)) as path, nodeIDs, totalCost, nodespath 
+                return path, nodeIDs, totalCost, nodespath
+                """, source=source, target=target, projection=projection, mode=mode)
         return result.values()
 
 
