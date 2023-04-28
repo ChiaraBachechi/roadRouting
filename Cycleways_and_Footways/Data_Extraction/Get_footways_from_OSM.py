@@ -82,6 +82,9 @@ def createQueryFootways(dist, lat, lon):
                             way(around:{dist},{lat},{lon})[footway="sidewalk"]->.all;
                             way(around:{dist},{lat},{lon})[foot="yes"]->.all; 
                             way(around:{dist},{lat},{lon})[foot="designated"]->.all;
+							way(around:{dist},{lat},{lon})["highway"]["sidewalk"="left"]->.all;
+							way(around:{dist},{lat},{lon})["highway"]["sidewalk"="both"]->.all;
+							way(around:{dist},{lat},{lon})["highway"]["sidewalk"="right"]->.all;
                             );
                             out geom;
                            """
