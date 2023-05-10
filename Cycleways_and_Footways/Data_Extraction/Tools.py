@@ -12,18 +12,21 @@ def save_gdf(gdf, path, filename):
     df['geometry'] = df['geometry'].astype(str)
     df.to_json(path + filename, orient='table')
 
-
-
 def elem_to_feature(elem, geomType):
     """Convert the element in a json format"""
 
     if geomType == "LineString":
+        prop = {}
+        for key in elem['tags'].keys():
+            if key in ['highway','bicycle','foot','lanes','cycleway','segregated','maxspeed']:
+                prop[key]=elem['tags'][key]
+        prop['nodes']=elem['nodes']
         return {
             "geometry": {
                     "type": geomType,
                     "coordinates": [[d["lon"], d["lat"]] for d in elem["geometry"]]
             },
-            "properties": elem["tags"] ,
+            "properties": prop
         }
 
     return {
@@ -31,5 +34,5 @@ def elem_to_feature(elem, geomType):
             "type": geomType,
             "coordinates": [elem["lon"], elem["lat"]]
         },
-        "properties": elem["tags"],
+        "properties": elem['tags']
     }

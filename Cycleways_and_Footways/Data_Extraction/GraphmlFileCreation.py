@@ -67,25 +67,38 @@ def add_options():
                         help="""Insert the password of the local neo4j instance.""",
                         required=True)
     parser.add_argument('--nameFile', '-f', dest='file_name', type=str,
-                        help="""Insert the name of the .graphml file.""",
+                        help="""Insert the name of the .graphml file without extention.""",
                         required=True)
     return parser
 
 
-def getStreetNodes(dist, lat, lon, greeter, filename):
+def getBicycleNodes(dist, lat, lon, greeter, filename):
     """Get the street nodes data from OSM"""
 
     G = ox.graph_from_point((lat, lon),
                             dist=int(dist),
                             dist_type='bbox',
                             simplify=False,
-                            network_type='all_private'
+                            network_type='all_private',
+                            custom_filter = '["bicycle"!~"no"]["highway"!~"motorway_link"]["highway"!~"motorway"]["highway"!~"trunk"]["highway"!~"trunk_link"]["highway"!~"motorway_junction"]'
                             )
 
-    path = greeter.get_path()[0][0] + '\\' + greeter.get_import_folder_name()[0][0] + '\\' + filename
+    path = greeter.get_path()[0][0] + '\\' + greeter.get_import_folder_name()[0][0] + '\\' + filename + '_bike.graphml'
     ox.save_graphml(G, path)
 
+def getFootNodes(dist, lat, lon, greeter, filename):
+    """Get the street nodes data from OSM"""
 
+    G = ox.graph_from_point((lat, lon),
+                            dist=int(dist),
+                            dist_type='bbox',
+                            simplify=False,
+                            network_type='all_private',
+                            custom_filter = '["foot"!~"no"]["highway"!~"motorway_link"]["highway"!~"motorway"]["highway"!~"trunk"]["highway"!~"trunk_link"]["highway"!~"motorway_junction"]'
+                            )
+
+    path = greeter.get_path()[0][0] + '\\' + greeter.get_import_folder_name()[0][0] + '\\' + filename + '_foot.graphml'
+    ox.save_graphml(G, path)
 
 def main(args=None):
 
@@ -95,8 +108,8 @@ def main(args=None):
     greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
 
     """Get the street nodes data from OSM"""
-    getStreetNodes(options.dist, options.lat, options.lon, greeter, options.file_name)
-
+    getBicycleNodes(options.dist, options.lat, options.lon, greeter, options.file_name)
+    getFootNodes(options.dist, options.lat, options.lon, greeter, options.file_name)
 
 if __name__ == "__main__":
     main()

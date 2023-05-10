@@ -15,14 +15,14 @@ class App:
     def close(self):
         self.driver.close()
 
-    def set_relations_weights(self):
+    def set_relations_weights(self, beta = 0.5):
         """Set weights on subgraphs' relationships"""
         with self.driver.session() as session:
-            result = session.write_transaction(self._set_relations_weights)
+            result = session.write_transaction(self._set_relations_weights, beta)
             return result
 
     @staticmethod
-    def _set_relations_weights(tx):    
+    def _set_relations_weights(tx, beta):    
         tx.run("""
                 MATCH(bl:BicycleLane)-[:CONTINUE_ON_LANE*1..2]-(bl1:BicycleLane) 
                 with bl, bl1 MATCH(bl)-[:CONTAINS]-(bk:BikeCross)-[r:BIKE_ROUTE]->(bk1:BikeCross)<-[:CONTAINS]-(bl1) 
@@ -207,35 +207,35 @@ class App:
                 """)
     
         tx.run("""
-                MATCH(n1)-[r:BIKE_ROUTE]->(n2) set r.travel_time = r.distance/(1000*r.speed);
+                MATCH(n1)-[r:BIKE_ROUTE]->(n2) set r.travel_time = (r.distance*1000) /r.speed;
                 """)
 
         tx.run("""
-                MATCH(n1)-[r:FOOT_ROUTE]->(n2) set r.travel_time = r.distance/(1000*r.speed);                
+                MATCH(n1)-[r:FOOT_ROUTE]->(n2) set r.travel_time = (r.distance*1000) /r.speed;                
                 """)
 
         tx.run("""
-                MATCH(n1)-[r:ROUTE]->(n2) set r.travel_time = r.distance/(1000*r.speed);
+                MATCH(n1)-[r:ROUTE]->(n2) set r.travel_time = (r.distance*1000) /r.speed;
                 """)
 
 
         tx.run("""
                 MATCH(n1)-[r:BIKE_ROUTE]-(n2) with max(r.travel_time) as max_travel_time, min(r.travel_time) as min_travel_time 
                 MATCH(n3)-[r1:BIKE_ROUTE]-(n4) with max_travel_time, min_travel_time, r1 
-                set r1.cost = 0.5*(r1.travel_time-min_travel_time)/(max_travel_time-min_travel_time) + 0.5*(r1.danger-1)/19
-                """)
+                set r1.cost = $beta *(r1.travel_time-min_travel_time)/(max_travel_time-min_travel_time) + (1-$beta2) *(r1.danger-1)/(20-1)
+                """,beta = beta, beta2 = beta)
 
         tx.run("""
                 MATCH(n1)-[r:FOOT_ROUTE]-(n2) with max(r.travel_time) as max_travel_time, min(r.travel_time) as min_travel_time 
                 MATCH(n3)-[r1:FOOT_ROUTE]-(n4) with max_travel_time, min_travel_time, r1 
-                set r1.cost = 0.5*(r1.travel_time-min_travel_time)/(max_travel_time-min_travel_time) + 0.5*(r1.danger-1)/19
-                """)
+                set r1.cost = $beta *(r1.travel_time-min_travel_time)/(max_travel_time-min_travel_time) + (1-$beta2) *(r1.danger-1)/19
+                """,beta = beta, beta2 = beta)
 
         tx.run("""
                 MATCH(n1)-[r:ROUTE]-(n2) with max(r.travel_time) as max_travel_time, min(r.travel_time) as min_travel_time 
                 MATCH(n3)-[r1:ROUTE]-(n4) with max_travel_time, min_travel_time, r1 
-                set r1.cost = 0.5*(r1.travel_time-min_travel_time)/(max_travel_time-min_travel_time) + 0.5*(r1.danger-1)/19
-                """)
+                set r1.cost = $beta *(r1.travel_time-min_travel_time)/(max_travel_time-min_travel_time) + (1-$beta2) *(r1.danger-1)/19
+                """,beta = beta, beta2 = beta)
 
         tx.run("""
                 MATCH(b)<-[r:IS_THE_SAME]-(b1) set r.travel_time = 0, r.cost = 0, r.danger = 0;
@@ -262,6 +262,9 @@ def add_options():
     parser.add_argument('--neo4jpwd', '-p', dest='neo4jpwd', type=str,
                         help="""Insert the password of the local neo4j instance.""",
                         required=True)
+    parser.add_argument('--beta', '-b', dest='beta', type=float,
+                        help="""Insert the beta parameter between 0 and 1. The value represent the importance of travel time on the final cost.""",
+                        required=False, default = 0.5)
    
     return parser
 
@@ -271,9 +274,12 @@ def main(args=None):
     argParser = add_options()
     options = argParser.parse_args(args=args)
     greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
+    if(oprions.beta > 1 or options.beta < 0):
+        print("The beta parameter value is not valid, 0.5 will be used")
+        options.beta = 0.5
 
     """Set weights on subgraphs' relationshps"""
-    greeter.set_relations_weights()
+    greeter.set_relations_weights(options.beta)
     print("Setting the relationships weight for the routing : done")
 
 

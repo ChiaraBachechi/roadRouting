@@ -62,7 +62,7 @@ class App:
     @staticmethod
     def _set_label(tx):
         result = tx.run("""
-                        MATCH(n)-[:BIKE_ROUTE]->(n1) set n:JunctionBikeCross, n1:JunctionBikeCross;
+                        MATCH (n)-[:BIKE_ROUTE]->(n1) set n:BikeNode, n1:BikeNode;
                     """)
         return result.values()
 
@@ -75,7 +75,7 @@ class App:
     @staticmethod
     def _set_location(tx):
         result = tx.run("""
-                           match(n:JunctionBikeCross) set n.geometry = "POINT(" + n.x + " " + n.y + ")", 
+                           match (n:BikeNode) set n.geometry = "POINT(" + n.x + " " + n.y + ")", 
                            n.location = point({latitude: tofloat(n.y), longitude: tofloat(n.x)}),n.lat = tofloat(n.y), n.lon = tofloat(n.x);
                        """)
         return result.values()
@@ -89,8 +89,12 @@ class App:
     @staticmethod
     def _set_distance(tx):
         result = tx.run("""
-                          MATCH (n:JunctionBikeCross)-[r:BIKE_ROUTE]-(n1:JunctionBikeCross) SET r.distance=tofloat(r.length), r.status='active';
+                          MATCH (n:BikeNode)-[r:BIKE_ROUTE]-(n1:BikeNode) SET r.distance=tofloat(r.length), r.status='active';
                        """)
+        tx.run("""
+                MATCH(bk:BikeNode)-[r:BIKE_ROUTE]->(bk1:BikeNode) where not exists((bk1)-->(bk)) 
+                merge (bk1)-[r1:BIKE_ROUTE]->(bk) on create set r1 = properties(r)
+                """)
         return result.values()
     
     def set_index(self):
@@ -102,7 +106,7 @@ class App:
     @staticmethod
     def _set_index(tx):
         result = tx.run("""
-                           create index junction_bikecross_index for (bk:JunctionBikeCross) on (bk.id);
+                           create index junction_bikecross_index for (bk:BikeNode) on (bk.id);
                        """)
         return result.values()
 
@@ -110,15 +114,6 @@ class App:
 def add_options():
     """Parameters needed to run the script"""
     parser = argparse.ArgumentParser(description='Creation of routing graph.')
-    parser.add_argument('--latitude', '-x', dest='lat', type=float,
-                        help="""Insert latitude of city center""",
-                        required=True)
-    parser.add_argument('--longitude', '-y', dest='lon', type=float,
-                        help="""Insert longitude of city center""",
-                        required=True)
-    parser.add_argument('--distance', '-d', dest='dist', type=float,
-                        help="""Insert distance (in meters) of the area to be cover""",
-                        required=True)
     parser.add_argument('--neo4jURL', '-n', dest='neo4jURL', type=str,
                         help="""Insert the address of the local neo4j instance. For example: neo4j://localhost:7687""",
                         required=True)

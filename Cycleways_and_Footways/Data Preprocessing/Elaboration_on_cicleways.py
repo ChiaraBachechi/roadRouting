@@ -128,11 +128,11 @@ def find_touched_lanes(gdf_cycleways):
         print(index)
         l = list(s.sindex.query(polygon, predicate="intersects"))
         for i in l:
-            gdf_cycleways[gdf_cycleways['id_num'] == r.id_num]['touched_lanes'].iloc[0].append(gdf_cycleways.iloc[i].id_num)
+            gdf_cycleways[gdf_cycleways['id'] == r.id]['touched_lanes'].iloc[0].append(gdf_cycleways.iloc[i].id)
         
         l1 = list(s.sindex.query(polygon, predicate="touches"))
         for i in l1:
-            gdf_cycleways[gdf_cycleways['id_num'] == r.id_num]['touched_lanes'].iloc[0].append(gdf_cycleways.iloc[i].id_num)
+            gdf_cycleways[gdf_cycleways['id'] == r.id]['touched_lanes'].iloc[0].append(gdf_cycleways.iloc[i].id)
 
 
 def find_closest_lanes(gdf_cycleways):
@@ -153,8 +153,8 @@ def find_closest_lanes(gdf_cycleways):
     
         for i in range(len(l_dist)):
             if l_dist[i] <= 9 and l_dist[i] > 0:
-                gdf_cycleways[gdf_cycleways['id_num'] == r.id_num]['closest_lanes'].iloc[0].append(
-                                                                        (gdf_cycleways.iloc[i].id_num, l_dist[i]))
+                gdf_cycleways[gdf_cycleways['id'] == r.id]['closest_lanes'].iloc[0].append(
+                                                                        (gdf_cycleways.iloc[i].id, l_dist[i]))
 
 
 def find_closest_lanes_spatial_index(gdf_cycleways):
@@ -175,15 +175,15 @@ def find_closest_lanes_spatial_index(gdf_cycleways):
         for i in l:
             if i in r.touched_lanes:
                 continue
-            gdf_cycleways[gdf_cycleways['id_num'] == r.id_num]['closest_lanes'].iloc[0].append(
-                                                                        (gdf_cycleways.iloc[i].id_num, 7))
+            gdf_cycleways[gdf_cycleways['id'] == r.id]['closest_lanes'].iloc[0].append(
+                                                                        (gdf_cycleways.iloc[i].id, 7))
 
         l1 = list(s.sindex.query(polygon.buffer(9), predicate="touches"))
         for i in l1:
             if i in r.touched_lanes:
                 continue
-            gdf_cycleways[gdf_cycleways['id_num'] == r.id_num]['closest_lanes'].iloc[0].append(
-                (gdf_cycleways.iloc[i].id_num, 9))
+            gdf_cycleways[gdf_cycleways['id'] == r.id]['closest_lanes'].iloc[0].append(
+                (gdf_cycleways.iloc[i].id, 9))
 
 
 

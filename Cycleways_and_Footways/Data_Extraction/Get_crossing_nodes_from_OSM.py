@@ -72,7 +72,7 @@ def add_options():
 def createQueryCrossingNodes(dist, lat, lon):
     """Create the query to fetch the data of interest"""
 
-    query = f"""[out:json]
+    query = f"""[out:json];
                                     (
                                     node(around:{dist},{lat},{lon})["crossing"]->.all;
                                     node(around:{dist},{lat},{lon})[footway="crossing"]->.all;
@@ -119,7 +119,6 @@ def main(args=None):
     """Save the GeoDataframe in a json file"""
     save_gdf(gdf, path, "crossing_nodes.json")
     print("Storing crossing nodes: done")
-    return 0
 
 if __name__ == "__main__":
     main()

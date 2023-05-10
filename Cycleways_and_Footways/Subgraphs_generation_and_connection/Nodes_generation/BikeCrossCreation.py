@@ -14,53 +14,40 @@ class App:
     def close(self):
         self.driver.close()
 
-    def connect_junctions_to_cycleways(self, file):
+    def connect_junctions_to_cycleways(self):
         """Connect street nodes with their corresponding cycleway"""
         with self.driver.session() as session:
-            result = session.write_transaction(self._connect_junctions_to_cycleways, file)
+            result = session.write_transaction(self._connect_junctions_to_cycleways)
             return result
 
     @staticmethod
-    def _connect_junctions_to_cycleways(tx, file):
+    def _connect_junctions_to_cycleways(tx):
 
         tx.run("""
-                match(b:BicycleLane) unwind b.bike_crosses as bike_cross with b, bike_cross match(bk:JunctionBikeCross) 
-                where bk.id = apoc.convert.toString(bike_cross) with b, bk merge (b)-[:CONTAINS]->(bk);
+                match(b:BicycleLane) unwind b.nodes as bike_cross with b, bike_cross match (bk:BikeNode) 
+                where bk.id = apoc.convert.toString(bike_cross) with b, bk merge (b)-[:CONTAINS]->(bk) set bk:BikeJunction;
                 """)
-        
-        tx.run("""
-                match(b:BicycleLane)-[:CONTAINS]->(bk:JunctionBikeCross) with b, bk merge (bk)-[:IS_CONTAINED]->(b); 
-                """)
+        return
 
 
-
-    def connect_junctions_to_crossings(self, file):
+    def connect_junctions_to_crossings(self):
         """Connect street nodes with their corresponding crossing (both node and way)"""
         with self.driver.session() as session:
-            result = session.write_transaction(self._connect_junctions_to_crossings, file)
+            result = session.write_transaction(self._connect_junctions_to_crossings)
             return result
 
     @staticmethod
-    def _connect_junctions_to_crossings(tx, file):
+    def _connect_junctions_to_crossings(tx):
 
         tx.run("""
-                match(cw:CrossWay) unwind cw.junction_crosses as junction_cross with cw, junction_cross match(bk:JunctionBikeCross) 
-                where bk.id = apoc.convert.toString(junction_cross) with cw, bk merge(cw)-[:CONTAINS]->(bk); 
-                """)
-        
-        tx.run("""
-                match(cw:CrossWay)-[:CONTAINS]->(bk:JunctionBikeCross) with cw, bk merge (bk)-[:IS_CONTAINED]->(cw); 
+                match(cw:CrossWay) unwind cw.nodes as junction_cross with cw, junction_cross match (bk:BikeNode) 
+                where bk.id = apoc.convert.toString(junction_cross) with cw, bk merge (cw)-[:CONTAINS]->(bk) set bk:BikeCrossing; 
                 """)
 
         tx.run("""
-                match(cn:CrossNode) with cn match(bk:JunctionBikeCross) where cn.osm_id = "node/" + bk.id merge(cn)<-[:IS_MAPPED]-(bk); 
+                match(cn:CrossNode) with cn match(bk:BikeNode) where cn.osm_id = "node/" + bk.id merge (cn)-[:CONTAINS]->(bk) set bk:BikeCrossing; 
                 """)
-
-        result = tx.run("""
-                match(cn:CrossNode)<-[:IS_MAPPED]-(bk:JunctionBikeCross) with cn, bk merge (cn)-[:IS_MAPPED]->(bk);
-                """)
-
-        return result.values()
+        return
 
     def change_of_labels(self):
         """Change the label of the street nodes connected to Cycleways and Crossings and set new indexes"""
@@ -70,44 +57,19 @@ class App:
 
     @staticmethod
     def _change_of_labels(tx):
+       
         tx.run("""
-                MATCH(n:Node)
-                remove n:Node
-                set n:RoadJunction;
+                MATCH (bk:BikeJunction)<-[:CONTAINS]-(cn:CrossNode) remove bk:BikeJunction;
                 """)
-
+                
         tx.run("""
-                MATCH(bk:JunctionBikeCross)-[:IS_CONTAINED]->(bl:BicycleLane)
-                remove bk:JunctionBikeCross
-                set bk:BikeCross;
+                MATCH (bk:BikeJunction)<-[:CONTAINS]-(cn:CrossWay) remove bk:BikeJunction;
                 """)
 
         tx.run("""
-                MATCH(bk:BikeCross)-[:IS_MAPPED]->(cn:CrossNode) remove bk:BikeCross set bk:JunctionBikeCross;
+                MATCH (jbk:BikeNode) WHERE NOT EXISTS(()-[:CONTAINS]->(jbk)) set jbk:BikeRoad;
                 """)
-
-        tx.run("""
-                MATCH(jbk:JunctionBikeCross) WHERE NOT EXISTS((jbk)-[:IS_CONTAINED]-()) REMOVE jbk:JunctionBikeCross set jbk:RoadBikeJunction;
-                """)
-
-        tx.run("""
-                MATCH(bk:BikeCross)-[r:BIKE_ROUTE]->(bk1:BikeCross) where not exists((bk1)-->(bk)) 
-                merge (bk1)-[r1:BIKE_ROUTE]->(bk) on create set r1.distance = r.distance; 
-                """)
-
-        tx.run("""
-                match(n:JunctionBikeCross) set n.id = "junctionbike/"+n.id;
-                """)
-
-        tx.run("""
-                match(n:BikeCross) set n.id = "bike/"+n.id;
-                """)
-
-        result = tx.run("""
-                match(n:RoadBikeJunction) set n.id = "roadbike/"+n.id;
-                """)
-
-        return result.values()
+        return
 
 
     def createIndexes(self):
@@ -124,21 +86,14 @@ class App:
                         """)
 
         tx.run("""
-                        create index junction_bikecross_index for (jbk:JunctionBikeCross) on (jbk.id);
+                        create index bikecross_index for (jbk:BikeCrossing) on (jbk.id);
                         """)
 
         tx.run("""
-                        create index bikecross_index for (bk:BikeCross) on (bk.id);
-                        """)
-
-        result = tx.run("""
-                        create index road_bikecross_index for (rbj:RoadBikeJunction) on (rbj.id);
+                        create index bikejunction_index for (bk:BikeJunction) on (bk.id);
                         """)
 
         return result
-
-
-
 
     def connect_to_road_junctions(self):
         """Connect the street nodes to the junctions nodes of the Road Layer"""
@@ -149,6 +104,7 @@ class App:
 
     @staticmethod
     def _connect_to_road_junctions(tx):
+        """DA RIVEDERE COMPLETAMENTE"""
         tx.run("""
                 MATCH(rbj:RoadBikeJunction), (rj:RoadJunction) where rbj.id = rj.id merge (rbj)-[:IS_THE_SAME]-(rj);
                 """)
@@ -219,18 +175,18 @@ class App:
     @staticmethod
     def _import_bikecrosses_into_spatial_layer(tx):
         tx.run("""
-                match(n:BikeCross) with collect(n) as crossnodes UNWIND crossnodes AS cn 
-                CALL spatial.addNode('spatial', cn) yield node return node;
+                match (n:BikeCross)
+                CALL spatial.addNode('spatial', n) yield node return node;
                 """)
 
         tx.run("""
-                match(n:JunctionBikeCross) with collect(n) as crossnodes UNWIND crossnodes AS cn 
-                CALL spatial.addNode('spatial', cn) yield node return node; 
+                match (n:BikeJunction)
+                CALL spatial.addNode('spatial', n) yield node return node; 
                 """)
 
         result = tx.run("""
-                match(n:RoadBikeJunction) with collect(n) as crossnodes UNWIND crossnodes AS cn 
-                CALL spatial.addNode('spatial', cn) yield node return node;
+                match (n:BikeRoad)
+                CALL spatial.addNode('spatial', n) yield node return node;
                 """)
 
         return result.values()        
@@ -249,12 +205,6 @@ def add_options():
     parser.add_argument('--neo4jpwd', '-p', dest='neo4jpwd', type=str,
                         help="""Insert the password of the local neo4j instance.""",
                         required=True)
-    parser.add_argument('--nameFilecycleways', '-fc', dest='file_name_cycleways', type=str,
-                        help="""Insert the name of the .json file containing the cycleways.""",
-                        required=True)
-    parser.add_argument('--nameFileCrossingWays', '-fcw', dest='file_name_crossing_ways', type=str,
-                        help="""Insert the name of the .json file containing the crossing ways.""",
-                        required=True)
     return parser
 
 
@@ -265,11 +215,11 @@ def main(args=None):
     greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
 
     """Connect street nodes with the corresponding cycleways"""
-    greeter.connect_junctions_to_cycleways(options.file_name_cycleways)
+    #greeter.connect_junctions_to_cycleways()
     print("Connecting junction bike cross to cycleways : done")
 
     """Connect street nodes with the corresponding crossings"""
-    greeter.connect_junctions_to_crossings(options.file_name_crossing_ways)
+    #greeter.connect_junctions_to_crossings()
     print("Connecting junction bike cross to crossings : done")
 
     """Change the label of the street nodes according to which element they are within"""
@@ -281,7 +231,7 @@ def main(args=None):
     print("Create new indexes in the subgraph : done")
 
     """Connect subgraph cycleways layer to the Road junction layer"""
-    greeter.connect_to_road_junctions()
+    #greeter.connect_to_road_junctions()
     print("Connect bike cross and road bike cross junctions to road junctions and delete road bike junctions : done")
 
     """Import subgraph cycleways layer nodes in the Neo4j Spatial Layer"""

@@ -45,6 +45,29 @@ class App:
                     """)
         return result.values()
 
+def elem_to_feature(elem, geomType):
+    """Convert the element in a json format"""
+
+    if geomType == "LineString":
+        prop = {}
+        for key in elem['tags'].keys():
+            prop[key]=elem['tags'][key]
+        prop['nodes']=elem['nodes']
+        return {
+            "geometry": {
+                    "type": geomType,
+                    "coordinates": [[d["lon"], d["lat"]] for d in elem["geometry"]]
+            },
+            "properties": prop
+        }
+
+    return {
+        "geometry": {
+            "type": geomType,
+            "coordinates": [elem["lon"], elem["lat"]]
+        },
+        "properties": prop
+    } 
 
 def add_options():
     """parameters to be used in order to run the script"""
@@ -122,7 +145,6 @@ def main(args=None):
     """Save the GeoDataframe in a json file"""
     save_gdf(gdf, path, "crossing_ways.json")
     print("Storing crossing ways: done")
-    return 0
 
 if __name__ == "__main__":
     main()

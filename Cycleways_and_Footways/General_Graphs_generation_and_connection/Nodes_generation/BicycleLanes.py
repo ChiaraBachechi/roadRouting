@@ -14,7 +14,6 @@ class App:
     def close(self):
         self.driver.close()
 
-
     def import_bicycle_lanes(self, file):
         """Import cycling paths data on Neo4j and generate BicycleLane nodes"""
 
@@ -32,7 +31,7 @@ class App:
                         b.lanes=record.lanes, b.cycleway=record.cycleway, b.segregated=record.segregated,
                         b.classifica=record.classifica, b.touched_lanes = record.touched_lanes, 
                         b.length = record.length,
-                        b.danger = record.pericolosità, b.bike_crosses = record.bike_cross, b.bike_road_junction = record.bike_road_junction,
+                        b.danger = record.pericolosità, b.bike_crosses = record.bike_cross, b.nodes = record.nodes, b.bike_road_junction = record.bike_road_junction,
                         b.road_junction = record.road_junction;
                     """, file=file)
 
@@ -84,7 +83,7 @@ class App:
     def _generate_relationships_touched_lanes(tx):
         tx.run("""
                 match(b:BicycleLane) where NOT isEmpty(b.touched_lanes) unwind b.touched_lanes as cycleway match(b1:BicycleLane) 
-                where b1.id_num="cycleway/" + cycleway
+                where b1.osm_id = cycleway
                 merge (b)-[r:CONTINUE_ON_LANE]->(b1)
         """)
 
@@ -100,25 +99,25 @@ class App:
         return result.values()
 
     
-    def generate_relationships_closest_lanes(self, file):
+    def generate_relationships_closest_lanes(self,file):
         """Generate relationships between nodes representing cycleways that are reachable by crossing
            the road where the crossing is not signaled
         """
 
         with self.driver.session() as session:
-            result = session.write_transaction(self._generate_relationships_closest_lanes, file)
+            result = session.write_transaction(self._generate_relationships_closest_lanes,file)
             return result
 
 
     
     @staticmethod
-    def _generate_relationships_closest_lanes(tx, file):
+    def _generate_relationships_closest_lanes(tx,file):
         result = tx.run("""
             call apoc.load.json($file) yield value as value with value.data as data 
-            unwind data as record match (b:BicycleLane) where b.id_num = "cycleway/" + record.id_num and NOT isEmpty(record.closest_lanes)
-            UNWIND record.closest_lanes as lane with b, lane match (b1:BicycleLane) where b1.id_num = "cycleway/" + lane[0] 
+            unwind data as record match (b:BicycleLane) where b.osm_id = record.id and NOT isEmpty(record.closest_lanes)
+            UNWIND record.closest_lanes as lane with b, lane match (b1:BicycleLane) where b1.osm_id = lane[0]
             merge (b)-[r:CONTINUE_ON_LANE_BY_CROSSING_ROAD]->(b1) on create set r.length = lane[1];
-        """, file=file)
+        """, file = file)
 
         return result.values()
       

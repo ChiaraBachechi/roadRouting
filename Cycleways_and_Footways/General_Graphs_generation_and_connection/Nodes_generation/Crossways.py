@@ -28,7 +28,7 @@ class App:
                         call apoc.load.json($file) yield value as value with value.data as data unwind data as record
                         MERGE(n:Crossing:CrossWay {id_num : "crossway/" + record.id_num}) ON CREATE SET 
                         n.osm_id = record.id, n.geometry = record.geometry, 
-                        n.crossing=record.crossing, n.bicycle=record.bicycle, n.closest_lanes = record.closest_lanes, 
+                        n.crossing=record.crossing, n.bicycle=record.bicycle, n.nodes = record.nodes, n.closest_lanes = record.closest_lanes, 
                         n.closest_footways = record.closest_footways, n.length = record.length, n.junction_crosses = record.junction_cross
                     """, file=file)
 
@@ -45,8 +45,8 @@ class App:
     @staticmethod
     def _import_crossways_in_spatial_layer(tx):
         result = tx.run("""
-                       match(n:CrossWay) with collect(n) as crossway UNWIND crossway AS cw 
-                       CALL spatial.addNode('spatial', cw) yield node return node
+                       match(n:CrossWay)
+                       CALL spatial.addNode('spatial', n) yield node return node
         """)
                        
         return result.values()

@@ -100,7 +100,7 @@ def find_cycleways_close_to_crossing_ways(gdf_cycleways, gdf_crossing_nodes):
         polygon = r['geometry'].buffer(10)
         l = list(s_cycleways.sindex.query(polygon, predicate="intersects"))
         for i in l:
-            gdf_crossing_nodes[gdf_crossing_nodes['id_num'] == r.id_num]['closest_lanes'].iloc[0].append(gdf_cycleways.iloc[i].id_num)
+            gdf_crossing_nodes[gdf_crossing_nodes['id'] == r.id]['closest_lanes'].iloc[0].append(gdf_cycleways.iloc[i].id)
     
 
 

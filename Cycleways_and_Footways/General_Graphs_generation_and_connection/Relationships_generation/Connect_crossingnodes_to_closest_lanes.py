@@ -27,20 +27,12 @@ class App:
     def _connect_lanes_to_crossing_nodes(tx):
         result = tx.run("""
             match(cr:CrossNode) where NOT isEmpty(cr.closest_lanes) unwind cr.closest_lanes as lane 
-            match(b:BicycleLane) where b.id_num="cycleway/" + lane merge (b)-[r:CROSS_THE_ROAD]->(cr);
+            match(b:BicycleLane) where b.osm_id = lane merge (b)-[r:CROSS_THE_ROAD]->(cr) merge (cr)-[r2:CROSS_THE_ROAD]->(b);
         """)
-
         result = tx.run("""
-            match(cr:CrossNode)<-[:CROSS_THE_ROAD]-(b:BicycleLane) with cr, b 
-            merge (cr)-[r:CROSS_THE_ROAD]->(b); 
-
-        """)
-
-        result = tx.run("""
-            match(bl:BicycleLane)-[r:CONTINUE_ON_LANE_BY_CROSSING_ROAD]-(bl1:BicycleLane) with bl, bl1, r
+            match (bl:BicycleLane)-[r:CONTINUE_ON_LANE_BY_CROSSING_ROAD]-(bl1:BicycleLane) with bl, bl1, r
             match(bl)-[:CROSS_THE_ROAD]->(cr:Crossing)<-[:CROSS_THE_ROAD]-(bl1) 
-            delete r; 
-
+            delete r;
         """)
         return result
 

@@ -25,13 +25,13 @@ class App:
     def _connect_crossways_to_bicycle_lanes(tx):
         result = tx.run("""
             match(cr:CrossWay) where NOT isEmpty(cr.closest_lanes) unwind cr.closest_lanes as lane 
-            match(b:BicycleLane) where b.id_num="cycleway/" + lane merge (b)-[r:CROSS_THE_ROAD]->(cr);
+            match(b:BicycleLane) where b.osm_id = lane merge (b)-[r:CROSS_THE_ROAD]->(cr) merge (cr)-[r2:CROSS_THE_ROAD]->(b);
         """)
-
         result = tx.run("""
-            match(cr:CrossWay)<-[:CROSS_THE_ROAD]-(b:BicycleLane) with cr, b merge (cr)-[r:CROSS_THE_ROAD]->(b); 
+            match (bl:BicycleLane)-[r:CONTINUE_ON_LANE_BY_CROSSING_ROAD]-(bl1:BicycleLane) with bl, bl1, r
+            match(bl)-[:CROSS_THE_ROAD]->(cr:Crossing)<-[:CROSS_THE_ROAD]-(bl1) 
+            delete r;
         """)
-
         return result
 
 
@@ -63,11 +63,6 @@ def main(args=None):
     greeter.connect_crossways_to_bicycle_lanes()
     print("Connect lanes to the crossing ways: done")
     print("Execution time : %s seconds" % (time.time() - start_time))
-
-
-    
-
-    return 0
 
 
 if __name__ == "__main__":

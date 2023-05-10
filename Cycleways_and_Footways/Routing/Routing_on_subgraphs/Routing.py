@@ -165,31 +165,67 @@ class App:
         return result.values()
 
 
-    def routing_algorithm(self, source, target, projection, mode):
+    def routing_algorithm(self, source, target, projection, mode,alg = 'd'):
         """Routing considering as weight just the travel time"""
         with self.driver.session() as session:
-            result = session.write_transaction(self._routing_algorithm, source, target, projection, mode)
+            result = session.write_transaction(self._routing_algorithm, source, target, projection, mode,alg)
             return result
 
     
     @staticmethod
-    def _routing_algorithm(tx, source, target, projection, mode):
-        result = tx.run("""
-                match (source:Junction {id: $source})
-                match (target:Junction {id: $target})
-                CALL gds.shortestPath.dijkstra.stream($projection, {
-                sourceNode: source,
-                targetNode: target,
-                relationshipWeightProperty: $mode
-                })
-                YIELD index, sourceNode, targetNode, totalCost, nodeIds, costs, path
-                with index,
-                    totalCost,
-                    [nodeId IN nodeIds | {latitude:gds.util.asNode(nodeId).lat,longitude:gds.util.asNode(nodeId).lon}] AS nodeCord,
-                    [nodeId IN nodeIds | gds.util.asNode(nodeId).id] AS nodeIDs
-                match(n)-[:CONTAINS]->(j:Junction) where j.id in nodeIDs with collect(distinct(n.id_num)) as path, nodeIDs, totalCost, nodeCord 
-                return path, nodeCord, totalCost
-                """, source=source, target=target, projection=projection, mode=mode)
+    def _routing_algorithm(tx, source, target, projection, mode, alg):
+        if(alg =='d'):
+            print('algorithm is:')
+            print(alg)
+            result = tx.run("""
+                    match (source:Junction {id: $source})
+                    match (target:Junction {id: $target})
+                    CALL gds.shortestPath.dijkstra.stream($projection, {
+                    sourceNode: source,
+                    targetNode: target,
+                    relationshipWeightProperty: $mode
+                    })
+                    YIELD index, sourceNode, targetNode, totalCost, nodeIds, costs, path
+                    with index,
+                        totalCost,
+                        [nodeId IN nodeIds | {latitude:gds.util.asNode(nodeId).lat,longitude:gds.util.asNode(nodeId).lon}] AS nodeCord,
+                        [nodeId IN nodeIds | gds.util.asNode(nodeId).id] AS nodeIDs
+                    match (n)-[:CONTAINS]->(j:Junction) where j.id in nodeIDs with collect(distinct(n.id_num)) as path, nodeIDs, totalCost, nodeCord 
+                    return path, nodeCord, totalCost, nodeIDs
+                    """, source=source, target=target, projection=projection, mode=mode)
+        else:
+            print('algorithm is:-----------------------------------')
+            print(alg)
+            result = tx.run("""
+                    match (source:Junction {id: $source})
+                    match (target:Junction {id: $target})
+                    CALL gds.shortestPath.astar.stream($projection, {
+                    sourceNode: source,
+                    targetNode: target,
+                    latitudeProperty: 'lat',
+                    longitudeProperty: 'lon',
+                    relationshipWeightProperty: $mode
+                    })
+                    YIELD index, sourceNode, targetNode, totalCost, nodeIds, costs, path
+                    with index,
+                        totalCost,
+                        [nodeId IN nodeIds | {latitude:gds.util.asNode(nodeId).lat,longitude:gds.util.asNode(nodeId).lon}] AS nodeCord,
+                        [nodeId IN nodeIds | gds.util.asNode(nodeId).id] AS nodeIDs
+                    match(n)-[:CONTAINS]->(j:Junction) where j.id in nodeIDs with collect(distinct(n.id_num)) as path, nodeIDs, totalCost, nodeCord 
+                    return path, nodeCord, totalCost, nodeIDs
+                    """, source=source, target=target, projection=projection, mode=mode)
+        return result.values()
+        
+    def evaluate_path(self, start, end):
+        """getting information about the trip"""
+        with self.driver.session() as session:
+            result = session.write_transaction(self._evaluate_path, start, end)
+            return result
+        
+    @staticmethod
+    def _evaluate_path(tx, start, end):
+        result = tx.run("""match (n {id: $start})-[r]->(m {id: $end}) return r.length,r.danger,r.speed
+        """,start = start, end = end)
         return result.values()
 
 
@@ -246,7 +282,7 @@ def creation_map(result_routing_cost, mapName):
 
     folium.PolyLine(coordinates_cost,
                     color='red',
-                    weight=3,
+                    weight=5,
                     opacity=0.8).add_to(m3)
 
     m3.save( mapName)
@@ -278,12 +314,12 @@ def creation_map_total(result_routing_cost, result_routing_travel, mapName):
 
     folium.PolyLine(coordinates_cost,
                     color='green',
-                    weight=3,
+                    weight=5,
                     opacity=0.8).add_to(m3)
 
     folium.PolyLine(coordinates_travel,
                     color='blue',
-                    weight=3,
+                    weight=5,
                     opacity=0.8).add_to(m3)
 
     m3.save(mapName)
@@ -321,6 +357,9 @@ def add_options():
     parser.add_argument('--mode', '-m', dest='mode', type=str,
                         help="""Choose the modality of routing : cycleways or footways.""",
                         required=True)
+    parser.add_argument('--alg', '-a', dest='alg', type=str,
+                        help="""Choose the modality of routing : astar (a) or dijkstra (d).""",
+                        required=False, default = 'd')
     parser.add_argument('--weight', '-w', dest='weight', type=str,help="""Insert the weight to use in order to perform the routing : travel_time, cost or both.""",
                         required=True)
     parser.add_argument('--mapName', '-mn', dest='mapName', type=str,
@@ -395,25 +434,104 @@ def main(args=None):
     graph_name = greeter.create_projections(options.mode, options.weight)
     if options.weight == "cost" or options.weight == "travel_time":
         """Routing considering as weight the cost"""
-        result_routing_cost = greeter.routing_algorithm(source_osmid, dest_osmid, graph_projection+"_"+options.weight,options.weight )
+        result_routing_cost = greeter.routing_algorithm(source_osmid, dest_osmid, graph_projection+"_"+options.weight,options.weight, options.alg )
         print("Find the best path between your source location and the target location, considering the travel time needed and the level of security of the paths used : done")
         print(result_routing_cost[0][1])
+        listNodes = result_routing_cost[0][3]
+        rels= []
+        for l in range(0,len(listNodes)-1):
+            rels.append((listNodes[l],listNodes[l+1]))
+        length = 0
+        danger = 0
+        time = 0
+        for r in rels:
+            result = greeter.evaluate_path(r[0],r[1])
+            if result[0][0]:
+                length = length + float(result[0][0])
+            if result[0][1]:
+                danger = danger + result[0][1]
+            if result[0][2]:
+                speed = result[0][2]/3.6
+            time = length/speed
+        danger = danger / len(rels)
         """Generation of the map with the obtained paths displayed"""
         creation_map(result_routing_cost, options.mapName)
         print("Creation of the map with the two paths drawn on it : done ")
+        print('cost:')
+        print(result_routing_cost[0][2])
+        print('number of hops:')
+        print(len(result_routing_cost[0][3]))
+        print('Length in meters:')
+        print(length)
+        print('Average danger:')
+        print(danger)
+        print('Total travel time in minutes:')
+        print(time/60)
 
     elif options.weight == "both":
         """Routing considering as weight the cost"""
-        result_routing_cost = greeter.routing_algorithm(source_osmid, dest_osmid, graph_projection + "_cost", "cost")
+        result_routing_cost = greeter.routing_algorithm(source_osmid, dest_osmid, graph_projection + "_cost", "cost", options.alg )
         print(
             """Find the best path between your source location and the target location,
             considering the travel time needed and the level of security of the paths used : done""")
-        print(result_routing_cost)
+        listNodes = result_routing_cost[0][3]
+        rels= []
+        for l in range(0,len(listNodes)-1):
+            rels.append((listNodes[l],listNodes[l+1]))
+        length = 0
+        danger = 0
+        time = 0
+        for r in rels:
+            result = greeter.evaluate_path(r[0],r[1])
+            if result[0][0]:
+                length = length + float(result[0][0])
+            if result[0][1]:
+                danger = danger + result[0][1]
+            if result[0][2]:
+                speed = result[0][2]/3.6
+            time = length/speed
+        danger = danger / len(rels)
+        print('cost:')
+        print(result_routing_cost[0][2])
+        print('number of hops:')
+        print(len(result_routing_cost[0][3]))
+        print('Length in meters:')
+        print(length)
+        print('Average danger:')
+        print(danger)
+        print('Total travel time in minutes:')
+        print(time/60)
         """Routing considering as weight the travel time"""
-        result_routing_travel_time = greeter.routing_algorithm(source_osmid, dest_osmid, graph_projection + "_travel_time", "travel_time")
+        result_routing_travel_time = greeter.routing_algorithm(source_osmid, dest_osmid, graph_projection + "_travel_time", "travel_time", options.alg )
         print(
             "Find the best path between your source location and the target location, considering only the travel time needed : done")
-        print(result_routing_travel_time)
+        listNodes = result_routing_travel_time[0][3]
+        rels= []
+        for l in range(0,len(listNodes)-1):
+            rels.append((listNodes[l],listNodes[l+1]))
+        length = 0
+        danger = 0
+        time = 0
+        for r in rels:
+            result = greeter.evaluate_path(r[0],r[1])
+            if result[0][0]:
+                length = length + float(result[0][0])
+            if result[0][1]:
+                danger = danger + result[0][1]
+            if result[0][2]:
+                speed = result[0][2]/3.6
+            time = length/speed
+        danger = danger / len(rels)
+        print('cost:')
+        print(result_routing_travel_time[0][2])
+        print('number of hops:')
+        print(len(result_routing_travel_time[0][3]))
+        print('Length in meters:')
+        print(length)
+        print('Average danger:')
+        print(danger)
+        print('Total travel time in minutes:')
+        print(time/60)
         """Generation of the map with the obtained paths displayed"""
         creation_map_total(result_routing_cost, result_routing_travel_time, options.mapName)
         print("Creation of the map with the two paths drawn on it : done ")

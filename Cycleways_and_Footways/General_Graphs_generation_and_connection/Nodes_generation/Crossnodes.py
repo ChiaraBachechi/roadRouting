@@ -63,8 +63,8 @@ class App:
     @staticmethod
     def _import_crossnodes_in_spatial_layer(tx):
         result = tx.run("""
-                       match(n:CrossNode) with collect(n) as crossnodes UNWIND crossnodes AS cn 
-                       CALL spatial.addNode('spatial', cn) yield node return node
+                       match (n:CrossNode)  
+                       CALL spatial.addNode('spatial', n) yield node return node
         """)
                        
         return result.values()

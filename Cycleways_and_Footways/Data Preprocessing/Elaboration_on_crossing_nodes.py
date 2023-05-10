@@ -110,7 +110,7 @@ def main(args=None):
     path = greeter.get_path()[0][0] + '\\' + greeter.get_import_folder_name()[0][0] + '\\'
 
     """Read the content of the json file, store it in a geodataframe and apply the preprocessing"""
-    gdf_crossing_nodes = gpd.read_file(path + options.file_name)
+    gdf_crossing_nodes = read_file(path + options.file_name)
     gdf_crossing_nodes.to_crs(epsg=3035, inplace=True)
 
     preprocessing(gdf_crossing_nodes)
