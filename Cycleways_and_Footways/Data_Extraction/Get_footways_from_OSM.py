@@ -74,7 +74,7 @@ def add_options():
 def createQueryFootways(dist, lat, lon):
     """Create the query to fetch the data of interest"""
 
-    query = f"""[out:json][timeout:1000];
+    query = f"""[out:json];
                             (
                             way(around:{dist},{lat},{lon})[highway="footway"]->.all;
                             way(around:{dist},{lat},{lon})[highway="path"]->.all;
@@ -102,10 +102,8 @@ def main(args=None):
     greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
     url = 'http://overpass-api.de/api/interpreter'
 
-
-    """overpass query to get crossings mapped as nodes fro OSM"""
+    """overpass query to get crossings mapped as nodes from OSM"""
     query = createQueryFootways(dist, lat, lon)
-
 
     """Crossing ways extraction and generation of the GeoDataframe"""
     result = requests.get(url, params={'data': query})
@@ -114,9 +112,7 @@ def main(args=None):
     gdf = gpd.GeoDataFrame.from_features(features, crs=4326)
     list_ids = ["way/"+str(elem["id"]) for elem in data]
     gdf.insert(0, 'id', list_ids)    
-
     path = greeter.get_path()[0][0] + '\\' + greeter.get_import_folder_name()[0][0] + '\\'
-
 
     """Save the GeoDataframe in a json file"""
     save_gdf(gdf, path, "footways.json")

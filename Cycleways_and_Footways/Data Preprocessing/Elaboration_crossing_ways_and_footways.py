@@ -102,13 +102,13 @@ def find_footways_close_to_crossing_ways(gdf_footways, gdf_crossing_ways):
         polygon = r['geometry']
         l = list(s.sindex.query(polygon, predicate="intersects"))
         for i in l:
-            gdf_crossing_ways[gdf_crossing_ways['id_num'] == r.id_num]['closest_footways'].iloc[0].append(
-                gdf_footways.iloc[i].id_num)
+            gdf_crossing_ways[gdf_crossing_ways['id'] == r.id]['closest_footways'].iloc[0].append(
+                gdf_footways.iloc[i].id)
 
         l1 = list(s.sindex.query(polygon, predicate="touches"))
         for i in l1:
-            gdf_crossing_ways[gdf_crossing_ways['id_num'] == r.id_num]['closest_footways'].iloc[0].append(
-                gdf_footways.iloc[i].id_num)
+            gdf_crossing_ways[gdf_crossing_ways['id'] == r.id]['closest_footways'].iloc[0].append(
+                gdf_footways.iloc[i].id)
 
     return gdf_crossing_ways
 

@@ -25,10 +25,16 @@ class App:
     def _import_footways(tx, file):
         result = tx.run("""
                         call apoc.load.json($file) yield value as value with value.data as data unwind data as record 
-                        MERGE(n:Footway {id_num : "foot/" + record.id_num}) 
-                        ON CREATE SET n.osm_id = record.id, n.geometry = record.geometry, n.touched_lanes = record.touched_lanes, 
+                        MATCH (n:BicycleLane {osm_id : record.id}) 
+                        SET n:Footway, 
+                        n.touched_footways = record.touched_footways;
+                """, file=file)
+        tx.run("""
+                        call apoc.load.json($file) yield value as value with value.data as data unwind data as record 
+                        MERGE (n:Footway {osm_id : record.id}) 
+                        ON CREATE SET n.geometry = record.geometry, n.touched_lanes = record.touched_lanes, 
                         n.touched_footways = record.touched_footways,
-                        n.foot_crosses = record.foot_cross, 
+                        n.nodes = record.nodes,
                         n.bicycle=record.bicycle, n.bus=record.bus, n.crossing=record.crossing, 
                         n.cycleway=record.cycleway, n.kerb=record.kerb, n.length = record.length, n.highway = record.highway;
                 """, file=file)
@@ -45,8 +51,8 @@ class App:
     @staticmethod
     def _import_footways_in_spatial_layer(tx):
         result = tx.run("""
-                       match(n:Footway) with collect(n) as footway UNWIND footway AS fw 
-                       CALL spatial.addNode('spatial', fw) yield node return node
+                       Match (n:Footway) where NOT "BicycleLane" in labels(n)
+                       CALL spatial.addNode('spatial', n) yield node return node
         """)
                         
         return result.values()
@@ -62,7 +68,7 @@ class App:
     @staticmethod
     def _add_index(tx):
         result = tx.run("""
-                       create index footway_index for (n:Footway) on (n.id_num)
+                       create index footway_index for (n:Footway) on (n.osm_id)
         """)
                         
         return result.values()
@@ -80,15 +86,10 @@ class App:
     @staticmethod
     def _generate_relationships_touched_footways(tx):
         result = tx.run("""
-                match(n:Footway) where NOT isEmpty(n.touched_footways) unwind n.touched_footways as foot 
-                match(n1:Footway) where n1.id_num="foot/" + foot and NOT isEmpty(n1.touched_footways) 
-                and n.geometry <> n1.geometry merge (n)-[r:CONTINUE_ON_FOOTWAY]->(n1); 
+                match(b:Footway) where NOT isEmpty(b.touched_footways) unwind b.touched_footways as f match (b1:Footway) 
+                where b1.osm_id = f and b.geometry <> b1.geometry
+                merge (b)-[r:CONTINUE_ON_FOOTWAY]->(b1)
         """)
-
-
-        #result = tx.run(""" 
-        #        match (n:Footway) remove n.touched_footways
-        #""")
         return result
 
 
@@ -107,8 +108,8 @@ class App:
     def _generate_relationships_closest_footways(tx, file):
         result = tx.run("""
                 call apoc.load.json($file) yield value as value with value.data as data 
-                UNWIND data as record match (f:Footway) where f.id_num = "foot/" + record.id_num and NOT isEmpty(record.closest_footways)
-                UNWIND record.closest_footways as foot with f, foot match (f1:Footway) where f1.id_num = "foot/" + foot[0] 
+                UNWIND data as record match (f:Footway) where f.osm_id = record.id and NOT isEmpty(record.closest_footways)
+                UNWIND record.closest_footways as foot with f, foot match (f1:Footway) where f1.osm_id = foot[0] 
                 merge (f)-[r:CONTINUE_ON_FOOTWAY_BY_CROSSING_ROAD]->(f1) on create set r.length = foot[1]; 
         """, file=file)
 

@@ -23,10 +23,15 @@ class App:
 
     @staticmethod
     def _import_bicycle_lanes(tx, file):
+        tx.run("""
+                        call apoc.load.json($file) yield value as value with value.data as data unwind data as record 
+                        MATCH (n:Footway {osm_id : record.id}) 
+                        SET n:BicycleLane, n.touched_lanes = record.touched_lanes;
+                """, file=file)
         result = tx.run("""
                         call apoc.load.json($file) yield value as value with value.data as data unwind data as record
-                        MERGE(b:BicycleLane {id_num : 'cycleway/' + apoc.convert.toString(record.id_num)}) ON CREATE SET b.osm_id = record.id, b.ID_E = record.ID_E, 
-                        b.geometry = record.geometry, 
+                        MERGE(b:BicycleLane {osm_id : record.id}) ON CREATE SET b.osm_id = record.id, b.ID_E = record.ID_E, 
+                        b.geometry = record.geometry, b.id_num = 'cycleway/' + apoc.convert.toString(record.id_num),
                         b.highway=record.highway, b.bicycle=record.bicycle, b.foot=record.foot, 
                         b.lanes=record.lanes, b.cycleway=record.cycleway, b.segregated=record.segregated,
                         b.classifica=record.classifica, b.touched_lanes = record.touched_lanes, 

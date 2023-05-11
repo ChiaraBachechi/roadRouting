@@ -114,11 +114,11 @@ def find_touched_footways(gdf_footways):
         print(index)
         l = list(s.sindex.query(polygon, predicate="intersects"))
         for i in l:
-            gdf_footways[gdf_footways['id_num'] == r.id_num]['touched_footways'].iloc[0].append(gdf_footways.iloc[i].id_num)
+            gdf_footways[gdf_footways['id'] == r.id]['touched_footways'].iloc[0].append(gdf_footways.iloc[i].id)
         
         l1 = list(s.sindex.query(polygon, predicate="touches"))
         for i in l1:
-            gdf_footways[gdf_footways['id_num'] == r.id_num]['touched_footways'].iloc[0].append(gdf_footways.iloc[i].id_num)
+            gdf_footways[gdf_footways['id'] == r.id]['touched_footways'].iloc[0].append(gdf_footways.iloc[i].id)
     
 
 
@@ -143,8 +143,8 @@ def find_closest_footways(gdf_footways):
     
         for i in range(len(l_dist)):
             if l_dist[i] <= 9 and l_dist[i] > 0:
-                gdf_footways[gdf_footways['id_num'] == r.id_num]['closest_footways'].iloc[0].append(
-                                                                        (gdf_footways.iloc[i].id_num, l_dist[i]))
+                gdf_footways[gdf_footways['id'] == r.id]['closest_footways'].iloc[0].append(
+                                                                        (gdf_footways.iloc[i].id, l_dist[i]))
 
 
 def find_closest_footways_spatial_index(gdf_footways):
@@ -165,15 +165,15 @@ def find_closest_footways_spatial_index(gdf_footways):
         for i in l:
             if i in r.touched_footways:
                 continue
-            gdf_footways[gdf_footways['id_num'] == r.id_num]['closest_footways'].iloc[0].append(
-                                                                        (gdf_footways.iloc[i].id_num, 7))
+            gdf_footways[gdf_footways['id'] == r.id]['closest_footways'].iloc[0].append(
+                                                                        (gdf_footways.iloc[i].id, 7))
 
         l1 = list(s.sindex.query(polygon, predicate="touches"))
         for i in l1:
             if i in r.touched_footways:
                 continue
-            gdf_footways[gdf_footways['id_num'] == r.id_num]['closest_footways'].iloc[0].append(
-                                                                            (gdf_footways.iloc[i].id_num, 9))
+            gdf_footways[gdf_footways['id'] == r.id]['closest_footways'].iloc[0].append(
+                                                                            (gdf_footways.iloc[i].id, 9))
 
 
 def save_gdf(gdf_footways, path):
@@ -182,7 +182,7 @@ def save_gdf(gdf_footways, path):
     gdf_footways.to_crs(epsg=4326, inplace=True)
     df_footways = pd.DataFrame(gdf_footways)
     df_footways['geometry'] = df_footways['geometry'].astype(str)
-    df_footways.to_json(path + "footways.json", orient='table')
+    df_footways.to_json(path , orient='table')
 
 
 

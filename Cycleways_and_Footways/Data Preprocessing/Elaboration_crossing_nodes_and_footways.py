@@ -100,8 +100,8 @@ def find_footways_close_to_crossing_nodes(gdf_footways, gdf_crossing_nodes):
         print(index)
         l1 = list(s.sindex.query(polygon, predicate="intersects"))
         for i in l1:
-            gdf_crossing_nodes[gdf_crossing_nodes['id_num'] == r.id_num]['closest_footways'].iloc[0].append(
-                gdf_footways.iloc[i].id_num)
+            gdf_crossing_nodes[gdf_crossing_nodes['id'] == r.id]['closest_footways'].iloc[0].append(
+                gdf_footways.iloc[i].id)
 
 
 def save_gdf(gdf, path):
@@ -124,7 +124,7 @@ def main(args=None):
     path = greeter.get_path()[0][0] + '\\' + greeter.get_import_folder_name()[0][0] + '\\' 
 
     """Read the content of the json files and store it in a geodataframe"""
-    gdf_footways = read_file(path + options.file_name_cycleways)
+    gdf_footways = read_file(path + options.file_name_footways)
     gdf_crossing_nodes = read_file(path + options.file_name_crossings)
 
     gdf_footways.to_crs(epsg=3035, inplace=True)
