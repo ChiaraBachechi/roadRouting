@@ -41,7 +41,6 @@ class App:
 
         return result.values()
 
-
     def import_footways_in_spatial_layer(self):
         """import Footway nodes on a Neo4j Spatial Layer"""
         with self.driver.session() as session:
@@ -57,13 +56,11 @@ class App:
                         
         return result.values()
 
-
     def add_index(self):
         """Add an index on numeric id attribute"""
         with self.driver.session() as session:
             result = session.write_transaction(self._add_index)
             return result
-
 
     @staticmethod
     def _add_index(tx):
@@ -73,16 +70,12 @@ class App:
                         
         return result.values()
 
-
-
-
     def generate_relationships_touched_footways(self):
         """Generate relationships between nodes representing footways that touch or intersect"""
         with self.driver.session() as session:
             result = session.write_transaction(self._generate_relationships_touched_footways)
             return result
 
-    
     @staticmethod
     def _generate_relationships_touched_footways(tx):
         result = tx.run("""
@@ -91,9 +84,6 @@ class App:
                 merge (b)-[r:CONTINUE_ON_FOOTWAY]->(b1)
         """)
         return result
-
-
-
 
     def generate_relationships_closest_footways(self, file):
         """Generate relationships between nodes representing footways reachable by crossing the road where the
@@ -115,12 +105,6 @@ class App:
 
         return result
 
-
-
-
-
-    
-
 def add_options():
     """Paramters needed to run the script"""
     parser = argparse.ArgumentParser(description='Insertion of footways in the graph.')
@@ -137,7 +121,6 @@ def add_options():
                         help="""Insert the name of the .json file.""",
                         required=True)
     return parser
-
 
 def main(args=None):
     """Parsing input parameters"""
@@ -163,7 +146,6 @@ def main(args=None):
     print("Add index on id_num : done")
     print("Execution time : %s seconds" % (time.time() - start_time))
 
-
     """Generate relationships between nodes representing footways that touch or intersect"""
     start_time = time.time()
     greeter.generate_relationships_touched_footways()
@@ -177,9 +159,6 @@ def main(args=None):
     greeter.generate_relationships_closest_footways(options.file_name)
     print("Connect the footways that are close to each other: done")
     print("Execution time : %s seconds" % (time.time() - start_time))
-    
-
-    return 0
 
 
 if __name__ == "__main__":

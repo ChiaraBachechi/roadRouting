@@ -13,29 +13,22 @@ class App:
     def close(self):
         self.driver.close()
 
-    def connect_footways_to_touched_bicycle_lanes(self):
+    def connect_footways_to_touched_bicycle_lanes(self, file):
         """Generate relationships between BicycleLane and Footway nodes representing cycling and foot paths that
            touch or intersect
         """
         with self.driver.session() as session:
-            result = session.write_transaction(self._connect_footways_to_touched_bicycle_lanes)
+            result = session.write_transaction(self._connect_footways_to_touched_bicycle_lanes, file)
             return result
 
-
     @staticmethod
-    def _connect_footways_to_touched_bicycle_lanes(tx):
-        tx.run("""
-            match(f:Footway) where NOT isEmpty(f.touched_lanes) unwind f.touched_lanes as lane 
-            match(b:BicycleLane) where b.id_num = "cycleway/" + lane merge (f)-[r:CONTINUE_ON_LANE]->(b);
-        """)
-
+    def _connect_footways_to_touched_bicycle_lanes(tx, file):
         result = tx.run("""
-            match(b:BicycleLane)<-[:CONTINUE_ON_LANE]-(f:Footway) with b, f 
-            merge (b)-[r:CONTINUE_ON_FOOTWAY]->(f)
-        """)
+            call apoc.load.json($file) yield value as value with value.data as data 
+                UNWIND data as record match(f:Footway) where NOT isEmpty(record.touched_lanes) and f.osm_id = record.id  UNWIND record.touched_lanes as lane
+            match(b:BicycleLane) where b.osm_id = lane merge (f)-[r:CONTINUE_ON_LANE]->(b) merge (b)-[r1:CONTINUE_ON_FOOTWAY]->(f);
+        """, file = file)
         return result
-
-
 
     def connect_footways_to_close_lanes(self, file):
         """Generate relationships between BicycleLane and Footway nodes representing cycling and foot paths that
@@ -44,25 +37,16 @@ class App:
             result = session.write_transaction(self._connect_footways_to_close_lanes, file)
             return result
 
-    
     @staticmethod
     def _connect_footways_to_close_lanes(tx, file):
         result = tx.run("""
                 call apoc.load.json($file) yield value as value with value.data as data 
-                UNWIND data as record match (f:Footway) where f.id_num = "foot/" + record.id_num and NOT isEmpty(record.closest_lanes)
-                UNWIND record.closest_lanes as lane with f, lane match (b:BicycleLane) where b.id_num = "cycleway/" + lane[0] 
-                merge (b)-[r:CONTINUE_ON_CLOSE_FOOTWAY_BY_CROSSING_ROAD]->(f) on create set r.length = lane[1]; 
-        """, file=file)
-
-        result = tx.run("""
-                match(b:BicycleLane)-[r:CONTINUE_ON_CLOSE_FOOTWAY_BY_CROSSING_ROAD]->(f:Footway) with b, f, r
-                merge(f)-[r1:CONTINUE_ON_CLOSE_LANE_BY_CROSSING_ROAD]->(b) ON CREATE SET r1.length = r.length;
-                """)
-
+                UNWIND data as record match (f:Footway) where f.osm_id = record.id and NOT isEmpty(record.closest_lanes)
+                UNWIND record.closest_lanes as lane with f, lane match (b:BicycleLane) where b.osm_id = lane[0] 
+                merge (b)-[r:CONTINUE_ON_CLOSE_FOOTWAY_BY_CROSSING_ROAD]->(f) on create set r.length = lane[1]
+                merge(f)-[r1:CONTINUE_ON_CLOSE_LANE_BY_CROSSING_ROAD]->(b) ON CREATE SET r1.length = r.length; 
+        """, file = file)
         return result
-
-
-
 
 def add_options():
     """Parameters needed to run the script"""
@@ -79,12 +63,7 @@ def add_options():
     parser.add_argument('--nameFileFootways', '-ff', dest='file_name_footways', type=str,
                         help="""Insert the name of the .json file containing footways.""",
                         required=True)
-    parser.add_argument('--nameFilecycleways', '-fc', dest='file_name_cycleways', type=str,
-                        help="""Insert the name of the .json file containing cycleways.""",
-                        required=True)
     return parser
-
-
 
 def main(args=None):
     """Parsing parameters"""
@@ -96,7 +75,7 @@ def main(args=None):
        touch or intersect
     """
     start_time = time.time()
-    greeter.connect_footways_to_touched_bicycle_lanes()
+    greeter.connect_footways_to_touched_bicycle_lanes(options.file_name_footways)
     print("Connect footways to cycleways: done")
     print("Execution time : %s seconds" % (time.time() - start_time))
 

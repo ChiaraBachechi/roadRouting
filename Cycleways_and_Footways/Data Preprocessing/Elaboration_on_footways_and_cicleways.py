@@ -107,10 +107,10 @@ def find_cycleways_touching_and_close_to_footways(gdf_footways, gdf_cycleways):
         l_dist = list(s2.distance(polygon))
         for i in range(len(l_dist)):
             if l_dist[i] == 0:
-                gdf_footways[gdf_footways['id_num'] == r.id_num]['touched_lanes'].iloc[0].append(gdf_cycleways.iloc[i]['id_num'])
+                gdf_footways[gdf_footways['id'] == r.id]['touched_lanes'].iloc[0].append(gdf_cycleways.iloc[i]['id'])
             elif l_dist[i] <= 9 and l_dist[i] > 0:
-                gdf_footways[gdf_footways['id_num'] == r.id_num]['closest_lanes'].iloc[0].append((
-                                                                gdf_cycleways.iloc[i]['id_num'], l_dist[i]))
+                gdf_footways[gdf_footways['id'] == r.id]['closest_lanes'].iloc[0].append((
+                                                                gdf_cycleways.iloc[i]['id'], l_dist[i]))
 
 
 
@@ -130,15 +130,15 @@ def find_cycleways_touching_footways_spatial_index(gdf_footways, gdf_cycleways):
         print(index)
 
         """ FIND CYCLEWAYS THAT TOUCH OR INTERSECT THE CURRENT FOOTWAY"""
-        l = list(s.sindex.query(polygon, predicate="intersects"))
+        l = list(s.sindex.query(polygon, predicate = "intersects"))
         for i in l:
-            gdf_footways[gdf_footways['id_num'] == r.id_num]['touched_lanes'].iloc[0].append(
-                                                                                gdf_cycleways.iloc[i].id_num)
+            gdf_footways[gdf_footways['id'] == r.id]['touched_lanes'].iloc[0].append(
+                                                                                gdf_cycleways.iloc[i].id)
 
-        l1 = list(s.sindex.query(polygon, predicate="touches"))
+        l1 = list(s.sindex.query(polygon, predicate = "touches"))
         for i in l1:
-            gdf_footways[gdf_footways['id_num'] == r.id_num]['touched_lanes'].iloc[0].append(
-                                                                                gdf_cycleways.iloc[i].id_num)
+            gdf_footways[gdf_footways['id'] == r.id]['touched_lanes'].iloc[0].append(
+                                                                                gdf_cycleways.iloc[i].id)
 
 
 
@@ -163,17 +163,14 @@ def find_cycleways_close_to_footways_spatial_index(gdf_footways, gdf_cycleways):
         for i in l3:
             if i in r.touched_lanes:
                 continue
-            gdf_footways[gdf_footways['id_num'] == r.id_num]['closest_lanes'].iloc[0].append(
-                                                                            (gdf_cycleways.iloc[i].id_num, 7))
-
+            gdf_footways[gdf_footways['id'] == r.id]['closest_lanes'].iloc[0].append(
+                                                                            (gdf_cycleways.iloc[i].id, 7))
         l4 = list(s.sindex.query(polygon, predicate="touches"))
         for i in l4:
             if i in r.touched_lanes:
                 continue
-            gdf_footways[gdf_footways['id_num'] == r.id_num]['closest_lanes'].iloc[0].append(
-                                                                            (gdf_cycleways.iloc[i].id_num, 9))
-
-    
+            gdf_footways[gdf_footways['id'] == r.id]['closest_lanes'].iloc[0].append(
+                                                                            (gdf_cycleways.iloc[i].id, 9))
 """
 def compute_distance(geom, footway, gdf_cycleways):
     dist = 0
@@ -280,9 +277,6 @@ def main(args=None):
     #print("Compute the footways that also act as crossings between cycleways : done")
 
     save_gdf(gdf_footways, path + options.file_name_footways)
-    save_gdf(gdf_cycleways, path + options.file_name_cycleways)
-
-
 
 if __name__ == "__main__":
     main()

@@ -62,7 +62,7 @@ class App:
     @staticmethod
     def _set_label(tx):
         result = tx.run("""
-                        MATCH(n)-[:FOOT_ROUTE]->(n1) set n:JunctionFootCross, n1:JunctionFootCross;
+                        MATCH(n)-[:FOOT_ROUTE]->(n1) set n:FootNode, n1:FootNode;
                     """)
         return result.values()
 
@@ -75,7 +75,7 @@ class App:
     @staticmethod
     def _set_location(tx):
         result = tx.run("""
-                           match(n:JunctionFootCross) set n.geometry = "POINT(" + n.x + " " + n.y + ")", 
+                           match (n:FootNode) where not "BikeNode" in labels(n) set n.geometry = "POINT(" + n.x + " " + n.y + ")", 
                            n.location = point({latitude: tofloat(n.y), longitude: tofloat(n.x)}),n.lat = tofloat(n.y), n.lon = tofloat(n.x);
                        """)
         return result.values()
@@ -89,7 +89,7 @@ class App:
     @staticmethod
     def _set_distance(tx):
         result = tx.run("""
-                          MATCH (n:JunctionFootCross)-[r:FOOT_ROUTE]-(n1:JunctionFootCross) SET r.distance=tofloat(r.length), r.status='active';
+                          MATCH (n:FootNode)-[r:FOOT_ROUTE]-(n1:FootNode) SET r.distance=tofloat(r.length), r.status='active';
                        """)
         return result.values()
     
@@ -102,7 +102,19 @@ class App:
     @staticmethod
     def _set_index(tx):
         result = tx.run("""
-                           create index junction_footcross_index for (fc:JunctionFootCross) on (fc.id);
+                           create index junction_footcross_index for (fc:FootNode) on (fc.id);
+                       """)
+        return result.values()
+    def merge_with_bike_nodes(self):
+        """Create a new index on the osm is of the nodes"""
+        with self.driver.session() as session:
+            result = session.write_transaction(self._set_index)
+            return result
+
+    @staticmethod
+    def _merge_with_bike_nodes(tx):
+        result = tx.run("""
+                           match (b:FootNode) match (c:BikeNode) where b.id = c.id CALL apoc.refactor.mergeNodes([b,c],{properties:"combine", mergeRels:true}) yield node return count(*)
                        """)
         return result.values()
 
@@ -110,15 +122,6 @@ class App:
 def add_options():
     """Parameters needed to run the script"""
     parser = argparse.ArgumentParser(description='Creation of routing graph.')
-    parser.add_argument('--latitude', '-x', dest='lat', type=float,
-                        help="""Insert latitude of city center""",
-                        required=True)
-    parser.add_argument('--longitude', '-y', dest='lon', type=float,
-                        help="""Insert longitude of city center""",
-                        required=True)
-    parser.add_argument('--distance', '-d', dest='dist', type=float,
-                        help="""Insert distance (in meters) of the area to be cover""",
-                        required=True)
     parser.add_argument('--neo4jURL', '-n', dest='neo4jURL', type=str,
                         help="""Insert the address of the local neo4j instance. For example: neo4j://localhost:7687""",
                         required=True)
@@ -143,13 +146,11 @@ def main(args=None):
     """Generation of the footways subgraph nodes"""
     greeter.creation_graph(options.file_name)
     greeter.set_label()
+    greeter.merge_with_bike_nodes()
     greeter.set_location()
     greeter.set_distance()
     greeter.set_index()
     greeter.close()
-
-    return 0
-
 
 if __name__ == "__main__":
     main()

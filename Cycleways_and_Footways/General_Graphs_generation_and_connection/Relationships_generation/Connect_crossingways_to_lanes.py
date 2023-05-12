@@ -20,11 +20,10 @@ class App:
             result = session.write_transaction(self._connect_crossways_to_bicycle_lanes)
             return result
 
-
     @staticmethod
     def _connect_crossways_to_bicycle_lanes(tx):
         result = tx.run("""
-            match(cr:CrossWay) where NOT isEmpty(cr.closest_lanes) unwind cr.closest_lanes as lane 
+			match(cr:CrossWay) where NOT isEmpty(cr.closest_lanes) unwind cr.closest_lanes as lane 
             match(b:BicycleLane) where b.osm_id = lane merge (b)-[r:CROSS_THE_ROAD]->(cr) merge (cr)-[r2:CROSS_THE_ROAD]->(b);
         """)
         result = tx.run("""

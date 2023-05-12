@@ -14,27 +14,29 @@ class App:
     def close(self):
         self.driver.close()
 
-    def connect_crossways_to_footways(self):
+    def connect_crossways_to_footways(self,file):
         """Generate relationships between CrossWay and Footway nodes """
         with self.driver.session() as session:
-            result = session.write_transaction(self._connect_crossways_to_footways)
+            result = session.write_transaction(self._connect_crossways_to_footways,file)
             return result
 
 
     @staticmethod
-    def _connect_crossways_to_footways(tx):
+    def _connect_crossways_to_footways(tx,file):
         result = tx.run("""
-            match(n:CrossWay) where NOT isEmpty(n.closest_footways) unwind n.closest_footways as foot 
-            match(n1:Footway) where n1.id_num="foot/" + foot merge (n1)-[:CROSS_THE_ROAD]->(n); 
-        """)
+        
+        call apoc.load.json($file) yield value as value with value.data as data unwind data as record
+            match(cr:CrossWay {osm_id: record.id}) where NOT isEmpty (record.closest_footways) 
+            UNWIND record.closest_footways as foot with cr, foot match (f:Footway) where f.osm_id = foot
+            merge (f)-[r:CROSS_THE_ROAD]->(cr)
+            merge (cr)-[r2:CROSS_THE_ROAD]->(f);
+        """,file = file)
 
         result = tx.run("""
-            match(n:CrossWay)<-[:CROSS_THE_ROAD]-(p:Footway) with n, p merge (n)-[:CROSS_THE_ROAD]->(p);
+            match (bl:Footway)-[r:CONTINUE_ON_FOOTWAY_BY_CROSSING_ROAD]-(bl1) with bl, bl1, r
+            match(bl)-[:CROSS_THE_ROAD]->(cr:Crossing)<-[:CROSS_THE_ROAD]-(bl1) 
+            delete r;
         """)
-
-        #result = tx.run("""
-        #    match(n:CrossWay) remove n.closest_footways
-        #""")
         return result
 
 
@@ -52,8 +54,10 @@ def add_options():
     parser.add_argument('--neo4jpwd', '-p', dest='neo4jpwd', type=str,
                         help="""Insert the password of the local neo4j instance.""",
                         required=True)
+    parser.add_argument('--nameFile', '-f', dest='file_name', type=str,
+                        help="""Insert the name of the .json file of crossnodes.""",
+                        required=True)
     return parser
-
 
 def main(args=None):
     """Parsing parameters"""
@@ -63,13 +67,9 @@ def main(args=None):
 
     """Generate relationships between CrossWay and Footway nodes"""
     start_time = time.time()
-    greeter.connect_crossways_to_footways()
+    greeter.connect_crossways_to_footways(options.file_name)
     print("Connect footways to the crossing ways: done")
     print("Execution time : %s seconds" % (time.time() - start_time))
-
-    
-
-    return 0
 
 
 if __name__ == "__main__":

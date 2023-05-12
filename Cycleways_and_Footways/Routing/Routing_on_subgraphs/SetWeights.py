@@ -24,11 +24,27 @@ class App:
     @staticmethod
     def _set_relations_weights(tx, beta):    
         tx.run("""
-                MATCH(bl:BicycleLane)-[:CONTINUE_ON_LANE*1..2]-(bl1:BicycleLane) 
-                with bl, bl1 MATCH(bl)-[:CONTAINS]-(bk:BikeCross)-[r:BIKE_ROUTE]->(bk1:BikeCross)<-[:CONTAINS]-(bl1) 
-                set r.speed = 15, r.danger = toFloat((bl.danger + bl1.danger)/2);
+                match (b:BikeJunction)-[r:BIKE_ROUTE]-(b2:BikeJunction) 
+				match (b)<-[:CONTAINS]-(bl:BicycleLane)-[:CONTAINS]->(b2)
+				set r.danger = bl.danger;
                 """)
-    
+		tx.run("""
+				match (b:BikeJunction)-[r:BIKE_ROUTE]-(b2:BikeJunction) 
+				match (b)<-[:CONTAINS]-(bl:BicycleLane)-[:CONTINUE_ON_LANE]-(bl2:BicycleLane)-[:CONTAINS]->(b2)
+				where bl.osm_id <> bl2.osm_id
+				set r.danger = round((bl.danger + bl2.danger)/2,0,'UP')""")
+		tx.run("""
+				match (b:BikeJunction)-[r:BIKE_ROUTE]-(b2:BikeJunction) 
+				match (b)<-[:CONTAINS]-(bl:BicycleLane)-[:CONTINUE_ON_LANE_BY_CROSSING_ROAD]-(bl2:BicycleLane)-[:CONTAINS]->(b2)
+				where bl.osm_id <> bl2.osm_id
+				set r.danger = round((bl.danger + bl2.danger)/2,0,'UP') + 15 """)
+		tx.run("""
+				match (b:BikeJunction)-[r:BIKE_ROUTE]-(b2:BikeJunction) 
+				match (b)<-[:CONTAINS]-(bl:BicycleLane)-[:CONTINUE_ON_CLOSE_LANE_BY_CROSSING_ROAD]-(bl2:BicycleLane)-[:CONTAINS]->(b2)
+				where bl.osm_id <> bl2.osm_id
+				set r.danger = 20 """)
+		tx.run("""match (b:BikeCrossing)-[r:BIKE_ROUTE]-() set r.danger = 20""")
+		"""---------------------------da modificare-------------------------------"""
         tx.run("""
                 MATCH(f:Footway)-[:CONTINUE_ON_FOOTWAY*1..2]-(f1:Footway) 
                 with f,f1 MATCH(f)-[:CONTAINS]-(fc:FootCross)-[r:FOOT_ROUTE]->(fc1:FootCross)<-[:CONTAINS]-(f1) 
