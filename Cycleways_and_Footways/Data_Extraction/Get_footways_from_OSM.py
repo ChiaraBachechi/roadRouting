@@ -78,6 +78,7 @@ def createQueryFootways(dist, lat, lon):
                             (
                             way(around:{dist},{lat},{lon})[highway="footway"]->.all;
                             way(around:{dist},{lat},{lon})[highway="path"]->.all;
+							way(around:{dist},{lat},{lon})[highway="steps"]->.all;
                             way(around:{dist},{lat},{lon})[highway="pedestrian"]->.all;
                             way(around:{dist},{lat},{lon})[footway="sidewalk"]->.all;
                             way(around:{dist},{lat},{lon})[foot="yes"]->.all; 

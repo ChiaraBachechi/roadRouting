@@ -124,9 +124,9 @@ class App:
                         MATCH (n:RoadJunction)
                             WHERE distance(n.location, poi) < 100
                             AND n <> p
-                        MERGE (p)-[r:ROUTE]->(n)
+                        MERGE (p)-[r:NEAR]->(n)
                             ON CREATE SET r.distance = distance(n.location, p.location), r.status = 'active'
-                        MERGE (p)<-[ri:ROUTE]-(n)
+                        MERGE (p)<-[ri:NEAR]-(n)
                             ON CREATE SET ri.distance = distance(n.location, p.location), ri.status = 'active'
                     """)
         return result.values()

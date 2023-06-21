@@ -25,31 +25,65 @@ class App:
     def _set_relations_weights(tx, beta):    
         tx.run("""
                 match (b:BikeJunction)-[r:BIKE_ROUTE]-(b2:BikeJunction) 
-				match (b)<-[:CONTAINS]-(bl:BicycleLane)-[:CONTAINS]->(b2)
-				set r.danger = bl.danger;
+                match (b)<-[:CONTAINS]-(bl:BicycleLane)-[:CONTAINS]->(b2)
+                set r.danger = bl.danger;
                 """)
-		tx.run("""
-				match (b:BikeJunction)-[r:BIKE_ROUTE]-(b2:BikeJunction) 
-				match (b)<-[:CONTAINS]-(bl:BicycleLane)-[:CONTINUE_ON_LANE]-(bl2:BicycleLane)-[:CONTAINS]->(b2)
-				where bl.osm_id <> bl2.osm_id
-				set r.danger = round((bl.danger + bl2.danger)/2,0,'UP')""")
-		tx.run("""
-				match (b:BikeJunction)-[r:BIKE_ROUTE]-(b2:BikeJunction) 
-				match (b)<-[:CONTAINS]-(bl:BicycleLane)-[:CONTINUE_ON_LANE_BY_CROSSING_ROAD]-(bl2:BicycleLane)-[:CONTAINS]->(b2)
-				where bl.osm_id <> bl2.osm_id
-				set r.danger = round((bl.danger + bl2.danger)/2,0,'UP') + 15 """)
-		tx.run("""
-				match (b:BikeJunction)-[r:BIKE_ROUTE]-(b2:BikeJunction) 
-				match (b)<-[:CONTAINS]-(bl:BicycleLane)-[:CONTINUE_ON_CLOSE_LANE_BY_CROSSING_ROAD]-(bl2:BicycleLane)-[:CONTAINS]->(b2)
-				where bl.osm_id <> bl2.osm_id
-				set r.danger = 20 """)
-		tx.run("""match (b:BikeCrossing)-[r:BIKE_ROUTE]-() set r.danger = 20""")
-		"""---------------------------da modificare-------------------------------"""
         tx.run("""
-                MATCH(f:Footway)-[:CONTINUE_ON_FOOTWAY*1..2]-(f1:Footway) 
-                with f,f1 MATCH(f)-[:CONTAINS]-(fc:FootCross)-[r:FOOT_ROUTE]->(fc1:FootCross)<-[:CONTAINS]-(f1) 
-                set r.speed = 4, r.danger = toFloat((f.danger + f1.danger)/2);
+                match (b:BikeJunction)-[r:BIKE_ROUTE]-(b2:BikeJunction) 
+                match (b)<-[:CONTAINS]-(bl:BicycleLane)-[:CONTINUE_ON_LANE]-(bl2:BicycleLane)-[:CONTAINS]->(b2)
+                where bl.osm_id <> bl2.osm_id
+                set r.danger = round((bl.danger + bl2.danger)/2,0,'UP')""")
+        tx.run("""
+                match (bl:BicycleLane)-[:CONTAINS]->(b:BikeJunction)-[r:BIKE_ROUTE]-(b2:BikeJunction)<-[:CONTAINS]-(bl2:BicycleLane) 
+                match (bl)-[:CONTINUE_ON_FOOTWAY]->(f:Footway)-[:CONTINUE_ON_LANE]->(bl2)
+                set r.danger = round(toFloat(bl.danger+f.danger)/2.0,0,"UP");""")
+        tx.run("""
+                match (b:BikeJunction)-[r:BIKE_ROUTE]-(b2:BikeJunction) 
+                match (b)<-[:CONTAINS]-(bl:BicycleLane)-[:CONTINUE_ON_LANE_BY_CROSSING_ROAD]-(bl2:BicycleLane)-[:CONTAINS]->(b2)
+                where bl.osm_id <> bl2.osm_id
+                set r.danger = round(toFloat(bl.danger + bl2.danger)/2,0,'UP') + 15 """)
+        tx.run("""match (b:BikeCrossing)-[r:BIKE_ROUTE]-() set r.danger = 20""")
+        tx.run("""match (b:BikeRoad)-[r:BIKE_ROUTE]-() set r.danger = 20""")
+        tx.run("""MATCH (bl:BicycleLane)-[:CONTAINS]->(bk:BikeJunction)-[r:BIKE_ROUTE]-(bk1:BikeJunction)<-[:CONTAINS]-(bl1:BicycleLane)
+                where not exists(r.danger) set r.danger = round((bl.danger + bl1.danger)/2,0,'UP') remove r.daner""")
+        """---------------------------Footways-------------------------------"""
+        tx.run("""match (f:Footway) 
+                  where not  f.highway in ['path','pedestrian','footway','track','steps'] 
+                   and not "BicycleLane" in labels(f) 
+                   set f.danger = 3""")
+        tx.run("""match (f:Footway) 
+                  where f.highway in ['path','pedestrian','footway','track','steps']
+                  and not "BicycleLane" in labels(f)
+                  set f.danger = 1""")
+        tx.run("""
+                match (b:FootJunction)-[r:FOOT_ROUTE]-(b2:FootJunction) 
+                match (b)<-[:CONTAINS]-(bl:Footway)-[:CONTAINS]->(b2)
+                set r.danger = bl.danger;
                 """)
+        tx.run("""
+                match (b:FootJunction)-[r:FOOT_ROUTE]-(b2:FootJunction) 
+                match (b)<-[:CONTAINS]-(bl:Footway)-[:CONTINUE_ON_FOOTWAY]-(bl2:Footway)-[:CONTAINS]->(b2)
+                where bl.osm_id <> bl2.osm_id
+                set r.danger = round(toFloat(bl.danger + bl2.danger)/2,0,'UP')""")
+        tx.run("""
+                match (b:FootJunction)-[r:FOOT_ROUTE]-(b2:FootJunction) 
+                match (b)<-[:CONTAINS]-(bl:Footway)-[:CONTINUE_ON_FOOTWAY_BY_CROSSING_ROAD]-(bl2:Footway)-[:CONTAINS]->(b2)
+                where bl.osm_id <> bl2.osm_id
+                set r.danger = round(toFloat(bl.danger + bl2.danger)/2,0,'UP') + 15 """)
+        tx.run("""
+                match (b:FootJunction)-[r:FOOT_ROUTE]->(b2:BikeJunction) 
+                match (b)<-[:CONTAINS]-(bl:Footway)-[:CONTINUE_ON_CLOSE_LANE_BY_CROSSING_ROAD]->(bl2:BicycleLane)-[:CONTAINS]->(b2)
+                where bl.osm_id <> bl2.osm_id
+                set r.danger = 20 """)
+        tx.run("""match (b:FootJunction)<-[r:FOOT_ROUTE]-(b2:BikeJunction) 
+                match (b)<-[:CONTAINS]-(bl:Footway)<-[:CONTINUE_ON_CLOSE_FOOTWAY_BY_CROSSING_ROAD]-(bl2:BicycleLane)-[:CONTAINS]->(b2)
+                where bl.osm_id <> bl2.osm_id
+                set r.danger = 20 """)
+        tx.run("""match (b:FootCrossing)-[r:FOOT_ROUTE]-() set r.danger = 20""")
+        tx.run("""match (b:FootRoad)-[r:FOOT_ROUTE]-() set r.danger = 20""")
+        tx.run("""MATCH(bl:Footway)-[c:CONTAINS]->(bk:FootJunction)-[r:FOOT_ROUTE]-(bk1:FootJunction)<-[c1:CONTAINS]-(bl1:Footway)
+                  where not exists(r.danger) 
+                  set r.danger = round(toFloat(bl1.danger+bl.danger)/2.0,0,'UP')""")
 
         tx.run("""
                 match(n)-[r:BIKE_ROUTE]-(n1) set r.speed = 15;
@@ -58,209 +92,21 @@ class App:
         tx.run("""
                 MATCH(n)-[r:FOOT_ROUTE]->(n1) set r.speed = 4;
                 """)
-
-        tx.run("""
-                MATCH(n)-[r:ROUTE]->(n1) set r.danger = 20, r.speed = 15; 
-                """)
     
-        tx.run("""
-                MATCH(bk:BikeCross)-[r:BIKE_ROUTE]->(rj:RoadBikeJunction) set r.danger = 5;
-                """)
-
-        tx.run("""
-                MATCH(bk:BikeCross)<-[r:BIKE_ROUTE]-(rj:RoadBikeJunction) set r.danger = 5;
-                """)
-
-        tx.run("""
-                MATCH(bk:BikeCross)-[r:BIKE_ROUTE]->(rj:RoadJunction) set r.danger = 20;
-                """)
-
-        tx.run("""
-                MATCH(bk:BikeCross)<-[r:BIKE_ROUTE]-(rj:RoadJunction) set r.danger = 20;
-                """)
-
-    
-        tx.run("""
-                MATCH(fc:FootCross)-[r:FOOT_ROUTE]->(rj:RoadFootJunction) set r.danger = 5;
-                """)
-    
-        tx.run("""
-                MATCH(fc:FootCross)<-[r:FOOT_ROUTE]-(rj:RoadFootJunction) set r.danger = 5;
-                """)
-    
-        tx.run("""
-                MATCH(rj:RoadBikeJunction)-[r:BIKE_ROUTE]->(rj1:RoadBikeJunction) set r.danger = 5;
-                """)
-
-        tx.run("""
-                MATCH(rj:RoadBikeJunction)<-[r:BIKE_ROUTE]-(rj1:RoadBikeJunction) set r.danger = 5;
-                """)
-    
-        tx.run("""
-                MATCH(rj:RoadFootJunction)-[r:FOOT_ROUTE]->(rj1:RoadFootJunction) set r.danger = 5;
-                """)
-
-        tx.run("""
-                MATCH(rj:RoadFootJunction)<-[r:FOOT_ROUTE]-(rj1:RoadFootJunction) set r.danger = 5;
-                """)
-    
-        tx.run("""
-                MATCH (n)-[r:BIKE_ROUTE]->(jbk:JunctionBikeCross) set r.danger = 5, r.speed = 4;
-                """)
-
-        tx.run("""
-                MATCH (n)<-[r:BIKE_ROUTE]-(jbk:JunctionBikeCross) set r.danger = 5, r.speed = 4;
-                """)
-
-        tx.run("""
-                MATCH (n)-[r:BIKE_ROUTE]->(jbk:JunctionBikeCross) where r.distance > 20 set r.danger = 20, r.speed = 15;
-                """)
-
-        tx.run("""
-                MATCH (n)<-[r:BIKE_ROUTE]-(jbk:JunctionBikeCross) where r.distance > 20 set r.danger = 20, r.speed = 15;
-                """)
-    
+  
         tx.run("""
                 MATCH(bl:BicycleLane)-[:CONTINUE_ON_LANE_BY_CROSSING_ROAD]->(bl1:BicycleLane) with bl, bl1 
-                MATCH(bl)-[:CONTAINS]-(bk:BikeCross)-[r:BIKE_ROUTE]->(bk1:BikeCross)<-[:CONTAINS]-(bl1) 
-                set r.danger = 20, r.speed = 4;
-                """)
-
-        tx.run("""
-                match(bl:BicycleLane)-[:CONTAINS]-(n)-[r:BIKE_ROUTE]-(n1)<-[:CONTAINS]-(bl1:BicycleLane) 
-                where bl.id_num <> bl1.id_num and not exists((bl)--(bl1)) set r.danger = 5, r.speed = 4;                
+                MATCH(bl)-[:CONTAINS]-(bk)-[r:BIKE_ROUTE]->(bk1)<-[:CONTAINS]-(bl1) 
+                set r.speed = 4;
                 """)
     
         tx.run("""
-                MATCH(bl:BicycleLane)-[:CONTAINS]->(bk:BikeCross)-[r:BIKE_ROUTE]-(bk1:BikeCross)<-[:CONTAINS]-(bl1:BicycleLane) 
-                where bl.id_num <> bl1.id_num and bk.location <> bk1.location and not exists((bl)-[:CONTINUE_ON_LANE *1..2]-(bl1)) 
-                and not exists((bl)-[:CONTINUE_ON_LANE_BY_CROSSING_ROAD]-(bl1)) set r.danger = 20, r.speed = 4;                
+                MATCH(n1)-[r:BIKE_ROUTE]->(n2) set r.travel_time = (r.distance * 3.6) /r.speed;
                 """)
 
         tx.run("""
-                MATCH(bl:BicycleLane)-[:CONTAINS]->(bk:BikeCross)-[r:BIKE_ROUTE]->(bk1:BikeCross)<-[:CONTAINS]-(bl1:BicycleLane) 
-                where bl.id_num = bl1.id_num set r.danger = bl.danger, r.speed = 15;
+                MATCH(n1)-[r:FOOT_ROUTE]->(n2) set r.travel_time = (r.distance * 3.6) /r.speed;                
                 """)
-    
-        tx.run("""
-                match(f:Footway)-[:CONTINUE_ON_LANE]-(bl:BicycleLane) with collect(bl) as lanes, f 
-                set f.danger = reduce(sum = 0, lane in lanes | sum + lane.danger);""")
-
-        tx.run("""
-                match(f:Footway)-[:CONTINUE_ON_LANE]-(bl:BicycleLane) with collect(bl) as lanes, f set f.danger = f.danger/size(lanes);
-                """)
-    
-        tx.run("""
-                match(f:Footway) where isEmpty(f.touched_lanes) set f.danger = 1;
-                """)
-
-        tx.run("""
-                MATCH(n)-[r:FOOT_ROUTE]->(jbk:JunctionFootCross) set r.danger = 5, r.speed = 4;
-                """)
-    
-        tx.run("""
-                MATCH(n)<-[r:FOOT_ROUTE]-(jbk:JunctionFootCross) set r.danger = 5, r.speed = 4;
-                """)
-
-        tx.run("""
-                MATCH(n)-[r:FOOT_ROUTE]->(jbk:JunctionFootCross) where r.distance > 20 set r.danger = 20, r.speed = 4;
-                """)
-    
-        tx.run("""
-                MATCH(n)<-[r:FOOT_ROUTE]-(jbk:JunctionFootCross) where r.distance > 20 set r.danger = 20, r.speed = 4;
-                """)
-    
-        tx.run("""
-                match(n)-[r:FOOT_ROUTE]-(n1) set r.speed = 4;
-                """)
-
-        tx.run("""
-                match(f:Footway) set f.speed = 4;
-                """)
-
-        tx.run("""
-                match(f:Footway) where f.highway = "path" or f.highway = "cycleway" set f.speed = 15;
-                """) 
-    
-        tx.run("""
-                match(f:Footway)-[:CONTAINS]-(n)-[r:FOOT_ROUTE]-(n1)<-[:CONTAINS]-(f1:Footway) 
-                where f.id_num <> f1.id_num and not exists((f)--(f1)) set r.danger = 5;
-                """)
-
-        tx.run("""
-                match(f:Footway)-[:CONTAINS]-(n)-[r:FOOT_ROUTE]-(n1)<-[:CONTAINS]-(f1:Footway) 
-                where f.id_num <> f1.id_num and not exists((f)--(f1)) and r.distance > 20 set r.danger = 20;
-                """)
-
-        tx.run("""
-                MATCH(f:Footway)-[:CONTINUE_ON_FOOTWAY_BY_CROSSING_ROAD]->(f1:Footway) 
-                with f, f1 MATCH(f)-[:CONTAINS]-(fc:FootCross)-[r:FOOT_ROUTE]->(fc1:FootCross)<-[:CONTAINS]-(f1) set r.danger = 20, r.speed = 4;
-                """)
-    
-        tx.run("""
-                MATCH(f:Footway)-[:CONTINUE_ON_FOOTWAY_BY_CROSSING_ROAD]->(f1:Footway) with f, f1 
-                MATCH(f)-[:CONTAINS]-(fc:FootCross)-[r:FOOT_ROUTE]->(jfc:JunctionFootCross)<-[:CONTAINS]-(f1) set r.danger = 20, r.speed = 4;
-                """)
-
-        tx.run("""
-                MATCH(f:Footway)-[:CONTAINS]->(fc:FootCross)-[r:FOOT_ROUTE]->(fc1:FootCross)<-[:CONTAINS]-(f1:Footway) 
-                where f.id_num = f1.id_num set r.danger = f.danger, r.speed = f.speed;
-                """)
-
-        tx.run("""
-                MATCH(f:Footway)-[:CONTAINS]->(fc:FootCross)-[r:FOOT_ROUTE]->(fc1:JunctionFootCross)<-[:CONTAINS]-(f1:Footway) 
-                where f.id_num = f1.id_num and r.distance > 20 set r.danger = 5, r.speed = f.speed;
-                """)
-
-        tx.run("""
-                MATCH(f:Footway)-[:CONTAINS]->(fc:JunctionFootCross)-[r:FOOT_ROUTE]->(fc1:FootCross)<-[:CONTAINS]-(f1:Footway) 
-                where f.id_num = f1.id_num and r.distance > 20 set r.danger = 5, r.speed = f.speed;
-                """)
-
-        tx.run("""
-                MATCH(f:Footway)-[:CONTAINS]->(fc:JunctionFootCross)-[r:FOOT_ROUTE]->(fc1:JunctionFootCross)<-[:CONTAINS]-(f1:Footway) 
-                where f.id_num = f1.id_num and r.distance > 20 set r.danger = 5, r.speed = f.speed;
-                """)
-    
-        tx.run("""
-                MATCH(n1)-[r:BIKE_ROUTE]->(n2) set r.travel_time = (r.distance*1000) /r.speed;
-                """)
-
-        tx.run("""
-                MATCH(n1)-[r:FOOT_ROUTE]->(n2) set r.travel_time = (r.distance*1000) /r.speed;                
-                """)
-
-        tx.run("""
-                MATCH(n1)-[r:ROUTE]->(n2) set r.travel_time = (r.distance*1000) /r.speed;
-                """)
-
-
-        tx.run("""
-                MATCH(n1)-[r:BIKE_ROUTE]-(n2) with max(r.travel_time) as max_travel_time, min(r.travel_time) as min_travel_time 
-                MATCH(n3)-[r1:BIKE_ROUTE]-(n4) with max_travel_time, min_travel_time, r1 
-                set r1.cost = $beta *(r1.travel_time-min_travel_time)/(max_travel_time-min_travel_time) + (1-$beta2) *(r1.danger-1)/(20-1)
-                """,beta = beta, beta2 = beta)
-
-        tx.run("""
-                MATCH(n1)-[r:FOOT_ROUTE]-(n2) with max(r.travel_time) as max_travel_time, min(r.travel_time) as min_travel_time 
-                MATCH(n3)-[r1:FOOT_ROUTE]-(n4) with max_travel_time, min_travel_time, r1 
-                set r1.cost = $beta *(r1.travel_time-min_travel_time)/(max_travel_time-min_travel_time) + (1-$beta2) *(r1.danger-1)/19
-                """,beta = beta, beta2 = beta)
-
-        tx.run("""
-                MATCH(n1)-[r:ROUTE]-(n2) with max(r.travel_time) as max_travel_time, min(r.travel_time) as min_travel_time 
-                MATCH(n3)-[r1:ROUTE]-(n4) with max_travel_time, min_travel_time, r1 
-                set r1.cost = $beta *(r1.travel_time-min_travel_time)/(max_travel_time-min_travel_time) + (1-$beta2) *(r1.danger-1)/19
-                """,beta = beta, beta2 = beta)
-
-        tx.run("""
-                MATCH(b)<-[r:IS_THE_SAME]-(b1) set r.travel_time = 0, r.cost = 0, r.danger = 0;
-                """)
-
-        result = tx.run("""
-                MATCH(b)-[r:IS_THE_SAME]->(b1) set r.travel_time = 0, r.cost = 0, r.danger = 0;
-                """)
-
         return result.values()
 
 

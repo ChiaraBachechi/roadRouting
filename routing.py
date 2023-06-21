@@ -84,9 +84,8 @@ class App:
                         relationshipWeightProperty: 'distance'
                     })
                     YIELD sourceNode, targetNode, totalCost, costs, nodeIds
-                    WITH [nodeId IN nodeIds | gds.util.asNode(nodeId)] AS nodeNames
-                    UNWIND nodeNames AS node
-                    RETURN node.lat, node.lon
+                    return sourceNode as source, targetNode as target, totalCost as total_cost, 
+                            [nodeId IN nodeIds | [gds.util.asNode(nodeId).lat,gds.util.asNode(nodeId).lon]] AS cords
                     """, source=source, target=target)
         return result.values()
 
@@ -103,8 +102,7 @@ class App:
                         match (wnt:RoadJunction {id: $target})
                     WITH wns as sWn, wnt as tWn
                     MATCH path = shortestPath((sWn)-[:ROUTE*]->(tWn)) 
-                    UNWIND nodes(path) AS node 
-                    RETURN node.lat, node.lon """, source=source, target=target)
+                    return sWn.id,tWn.id, length(path) as totalCost, [n in nodes(path)| [n.lat,n.lon]] AS cords""", source=source, target=target)
         return result.values()
 
     def read_traffic_path(self, source, target):
@@ -118,16 +116,17 @@ class App:
         result = tx.run("""
         match (sWn:RoadJunction {id: $source})
         match(tWn:RoadJunction {id: $target})
-                    CALL gds.shortestPath.dijkstra.stream('graph', {
+                    CALL gds.shortestPath.astar.stream('graph', {
                         relationshipTypes: ['ROUTE'],
                         sourceNode: id(sWn),
                         targetNode: id(tWn),
+                        longitudeProperty: 'lon',
+                        latitudeProperty:'lat',
                         relationshipWeightProperty: 'traffic'
                     })
                     YIELD sourceNode, targetNode, totalCost, costs, nodeIds
-                    WITH [nodeId IN nodeIds | gds.util.asNode(nodeId)] AS nodeNames
-                    UNWIND nodeNames AS node
-                    RETURN node.lat, node.lon
+                    return sourceNode as source, targetNode as target, totalCost as total_cost,
+                            [nodeId IN nodeIds | [gds.util.asNode(nodeId).lat,gds.util.asNode(nodeId).lon]] AS cords
                     """, source=source, target=target)
         return result.values()
 
@@ -149,12 +148,10 @@ def addOptions():
     parser.add_argument('--neo4jpwd', '-p', dest='neo4jpwd', type=str,
                         help="""Insert the password of the local neo4j instance.""",
                         required=True)
-    parser.add_argument('--lat', '-x', dest='latitude', type=float,
-                        help="""Insert the latitude of the central point of the generated map. SRID 4326""",
-                        required=True)
-    parser.add_argument('--lon', '-y', dest='longitude', type=float,
-                        help="""Insert the longitude of the central point of the generated map. SRID 4326""",
-                        required=True)
+    parser.add_argument('--fileOutput', '-f', dest='mapName', type=str,
+                        help="""Insert the path of the file of the resulting map.""",
+                        required=False,
+                        default='map.html')
     return parser
 
 
@@ -166,8 +163,7 @@ def main(args=None):
     targetNode = options.destination
     #connecting to the neo4j instance
     greeter = App(options.neo4jURL, options.neo4juser, options.neo4jpwd)
-    #creating the folium map
-    m = fo.Map(location=[options.latitude, options.longitude], zoom_start=13)
+ 
     #asking the user what type of shortest path he needs
     mode = input('Select shortest path for distance[d], hops[h] or traffic volume[t] ')
     mode = mode.lower()
@@ -175,30 +171,53 @@ def main(args=None):
     greeter.create_projected_graph()
     ris = []
     result = greeter.generate_possible_combinations(int(sourceNode),int(targetNode))
-    df = pd.DataFrame(result, columns = ['POI_source','POI_target','distance_source','junction_source','distance_target','junction_target'])
-    df['distance_target_normalized'] = (df['distance_target']-df['distance_target'].min())/(df['distance_target'].max()-df['distance_target'].min())
-    df['distance_source_normalized'] = (df['distance_source']-df['distance_source'].min())/(df['distance_source'].max()-df['distance_source'].min())
-    df['sum_distance'] = df['distance_target_normalized']+df['distance_source_normalized']
+    df = pd.DataFrame(result, columns=['POI_source','POI_target','distance_source','junction_source','distance_target','junction_target'])
+    df['distance_target_normalized']=(df['distance_target'] - df['distance_target'].min())/(df['distance_target'].max() - df['distance_target'].min())
+    df['distance_source_normalized']=(df['distance_source'] - df['distance_source'].min())/(df['distance_source'].max() - df['distance_source'].min())
+    df['sum_distance']=df['distance_target_normalized'] + df['distance_source_normalized']
     min_dist = df.groupby(['junction_source','junction_target']).min()['sum_distance'].reset_index(level=0).reset_index(level=0)
     df = df.reset_index(level=0).reset_index(level=0).set_index(['junction_source','junction_target','sum_distance']).join(min_dist.set_index(['junction_source','junction_target','sum_distance']),how = 'inner')
     df = df.reset_index(level=0).reset_index(level=0).reset_index(level=0)[['junction_source','junction_target','distance_target_normalized','distance_source_normalized','sum_distance']]
-    for i,row in df.iterrows():
-        if mode.startswith('d'):
-            result = greeter.read_distance_path(str(row.junction_source), str(row.junction_target))
-        elif mode.startswith('h'):
-            result = greeter.read_shortest_path(str(row.junction_source),str(row.junction_target))
-        elif mode.startswith('t'):
-            result = greeter.read_traffic_path(str(row.junction_source), str(row.junction_target))
-        if len(result)>0:
-            ris = result
-            break
+    #evaluate the paths of the combination pair in the 10% nearest points to the POI
+    r2 = list()
+    for i,row in df[df.sum_distance < 0.1].sort_values(by=['sum_distance']).iterrows():
+            dic = {}
+            if mode.startswith('d'):
+                result = greeter.read_distance_path(str(row.junction_source),str(row.junction_target))
+            elif mode.startswith('h'):
+                result = greeter.read_shortest_path(str(row.junction_source),str(row.junction_target))
+            elif mode.startswith('t'):
+                result = greeter.read_traffic_path(str(row.junction_source), str(row.junction_target))
+            if len(result)>0:
+                cost = result[0][2]
+                total_cost = row['distance_source_normalized'] + cost + row['distance_target_normalized']
+                dic['cost'] = cost
+                dic['length'] = len(result[0][3])
+                dic['path'] = result[0][3]
+                dic['junction_source'] = row.junction_source
+                dic['junction_target'] = row.junction_target
+                r2.append(dic)
+    print(r2)
     #add the path to the map
-    if len(ris) == 0:
-        print('\nNo result for query')
-    else:
-        print(ris)
-        fo.PolyLine(ris, color="green", weight=4).add_to(m)
-        m.save('map.html')
+    if len(r2) == 0:
+        print('\nNo path exists')
+        greeter.delete_projected_graph()
+        exit(0)
+    min_cost = r2[0]['cost']
+    for x in r2:
+        if (x['cost'] < min_cost):
+            min_cost = x['cost']
+    for x in r2:
+        if (x['cost']==min_cost):
+            print(x['junction_source'])
+            print(x['junction_target'])
+            print(x['length'])
+            m = fo.Map(location=[x['path'][0][0], x['path'][0][1]], zoom_start=13)
+            if len(x['path']) == 0:
+                print('\nNo result for query')
+            else:
+                fo.PolyLine(x['path'], color="green", weight=5).add_to(m)
+                m.save(options.mapName)
     greeter.delete_projected_graph()
     greeter.close()
     return 0

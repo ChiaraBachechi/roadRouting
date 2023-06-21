@@ -31,8 +31,9 @@ class App:
         tx.run("match(bl:BicycleLane)<-[r:CROSS_THE_ROAD]-(cn:CrossNode) set r.distance = bl.length + 5;") 
         tx.run("match(bl:BicycleLane)-[r:CROSS_THE_ROAD]->(cn:CrossWay) set r.distance = bl.length + cn.length/2;") 
         tx.run("match(bl:BicycleLane)<-[r:CROSS_THE_ROAD]-(cn:CrossWay) set r.distance = bl.length + cn.length/2;")
-
-
+        #set footway danger
+        tx.run("""match (f:Footway) where not "BicycleLane" in labels(f) and f.highway = 'footway' set f.danger = 1;""")
+        tx.run("""match (f:Footway) where not "BicycleLane" in labels(f) and f.highway = 'pedestrian' set f.danger = 1;""")
         tx.run("match(f:Footway)-[r:CROSS_THE_ROAD]->(cn:CrossNode) set r.distance = f.length + 5;") 
         tx.run("match(f:Footway)<-[r:CROSS_THE_ROAD]-(cn:CrossNode) set r.distance = f.length + 5;") 
         tx.run("match(f:Footway)-[r:CROSS_THE_ROAD]->(cn:CrossWay) set r.distance = f.length + cn.length/2;") 

@@ -94,6 +94,25 @@ class App:
                 CALL gds.graph.drop( $name)
                         """,name = name)
         return result
+    
+    def update_cost(tx,beta=0.5):
+        with self.driver.session() as session:
+            path = session.read_transaction(self._update_cost,beta)
+            
+    @staticmethod
+    def _update_cost(tx,beta):
+        tx.run("""
+                MATCH(n1)-[r:BIKE_ROUTE]-(n2) with max(r.travel_time) as max_travel_time, min(r.travel_time) as min_travel_time 
+                MATCH(n3)-[r1:BIKE_ROUTE]-(n4) with max_travel_time, min_travel_time, r1 
+                set r1.cost = $beta *(r1.travel_time-min_travel_time)/(max_travel_time-min_travel_time) + (1-$beta2) *(r1.danger-1)/(20-1)
+                """,beta = beta, beta2 = beta)
+
+        tx.run("""
+                MATCH(n1)-[r:FOOT_ROUTE]-(n2) with max(r.travel_time) as max_travel_time, min(r.travel_time) as min_travel_time 
+                MATCH(n3)-[r1:FOOT_ROUTE]-(n4) with max_travel_time, min_travel_time, r1 
+                set r1.cost = $beta *(r1.travel_time-min_travel_time)/(max_travel_time-min_travel_time) + (1-$beta2) *(r1.danger-1)/19
+                """,beta = beta, beta2 = beta)"
+        return
 
     def get_import_folder_name(self):
         """gets the path of the import folder of the neo4j instance"""

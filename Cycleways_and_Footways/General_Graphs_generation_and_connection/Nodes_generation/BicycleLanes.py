@@ -90,6 +90,7 @@ class App:
                 match(b:BicycleLane) where NOT isEmpty(b.touched_lanes) unwind b.touched_lanes as cycleway match(b1:BicycleLane) 
                 where b1.osm_id = cycleway
                 merge (b)-[r:CONTINUE_ON_LANE]->(b1)
+                merge (b1)-[r1:CONTINUE_ON_LANE]->(b)
         """)
 
         result = tx.run("""
@@ -120,8 +121,10 @@ class App:
         result = tx.run("""
             call apoc.load.json($file) yield value as value with value.data as data 
             unwind data as record match (b:BicycleLane) where b.osm_id = record.id and NOT isEmpty(record.closest_lanes)
-            UNWIND record.closest_lanes as lane with b, lane match (b1:BicycleLane) where b1.osm_id = lane[0]
-            merge (b)-[r:CONTINUE_ON_LANE_BY_CROSSING_ROAD]->(b1) on create set r.length = lane[1];
+            UNWIND record.closest_lanes as lane with b, lane match (b1:BicycleLane) 
+            where b1.osm_id = lane[0] and and b.osm_id <> b1.osm_id and not exists((b)-[:CONTINUE_ON_LANE]->(bl))
+            merge (b)-[r:CONTINUE_ON_LANE_BY_CROSSING_ROAD]->(b1) on create set r.length = lane[1]
+            merge (b1)-[r1:CONTINUE_ON_LANE_BY_CROSSING_ROAD]->(b) on create set r1.length = lane[1];
         """, file = file)
 
         return result.values()

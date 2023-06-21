@@ -64,6 +64,7 @@ class App:
         result = tx.run("""
                         MATCH(n)-[:FOOT_ROUTE]->(n1) set n:FootNode, n1:FootNode;
                     """)
+        tx.run("""match (f:FootNode)-[r:FOOT_ROUTE]->(n) merge (n)-[r1:FOOT_ROUTE]->(f) set r1 = properties(r)""")
         return result.values()
 
     def set_location(self):

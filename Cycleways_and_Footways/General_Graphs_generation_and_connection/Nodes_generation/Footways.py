@@ -82,6 +82,7 @@ class App:
                 match(b:Footway) where NOT isEmpty(b.touched_footways) unwind b.touched_footways as f match (b1:Footway) 
                 where b1.osm_id = f and b.geometry <> b1.geometry
                 merge (b)-[r:CONTINUE_ON_FOOTWAY]->(b1)
+                merge (b1)-[r1:CONTINUE_ON_FOOTWAY]->(b)
         """)
         return result
 
@@ -99,8 +100,9 @@ class App:
         result = tx.run("""
                 call apoc.load.json($file) yield value as value with value.data as data 
                 UNWIND data as record match (f:Footway) where f.osm_id = record.id and NOT isEmpty(record.closest_footways)
-                UNWIND record.closest_footways as foot with f, foot match (f1:Footway) where f1.osm_id = foot[0] 
-                merge (f)-[r:CONTINUE_ON_FOOTWAY_BY_CROSSING_ROAD]->(f1) on create set r.length = foot[1]; 
+                UNWIND record.closest_footways as foot with f, foot match (f1:Footway) where f1.osm_id = foot[0] and f.osm_id <> f1.osm_id
+                merge (f)-[r:CONTINUE_ON_FOOTWAY_BY_CROSSING_ROAD]->(f1) on create set r.length = foot[1]
+                merge (f1)-[r1:CONTINUE_ON_FOOTWAY_BY_CROSSING_ROAD]->(f) on create set r1.length = foot[1];
         """, file=file)
 
         return result

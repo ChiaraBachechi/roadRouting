@@ -80,7 +80,7 @@ def getBicycleNodes(dist, lat, lon, greeter, filename):
                             dist_type='bbox',
                             simplify=False,
                             network_type='all_private',
-                            custom_filter = '["bicycle"!~"no"]["highway"!~"motorway_link"]["highway"!~"motorway"]["highway"!~"trunk"]["highway"!~"trunk_link"]["highway"!~"motorway_junction"]'
+                            custom_filter = '["highway"]["bicycle"!~"no"][!"boundary"]["highway"!~"motorway_link"]["highway"!~"motorway"]["highway"!~"trunk"]["highway"!~"trunk_link"]["highway"!~"motorway_junction"][!"railway"][!"destination"]'
                             )
 
     path = greeter.get_path()[0][0] + '\\' + greeter.get_import_folder_name()[0][0] + '\\' + filename + '_bike.graphml'
@@ -94,7 +94,7 @@ def getFootNodes(dist, lat, lon, greeter, filename):
                             dist_type='bbox',
                             simplify=False,
                             network_type='all_private',
-                            custom_filter = '["foot"!~"no"]["highway"!~"motorway_link"]["highway"!~"motorway"]["highway"!~"trunk"]["highway"!~"trunk_link"]["highway"!~"motorway_junction"]'
+                            custom_filter = '["foot"!~"no"]["highway"!~"motorway_link"]["highway"!~"motorway"]["highway"!~"trunk"]["highway"!~"trunk_link"]["highway"!~"motorway_junction"][!"railway"]'
                             )
 
     path = greeter.get_path()[0][0] + '\\' + greeter.get_import_folder_name()[0][0] + '\\' + filename + '_foot.graphml'

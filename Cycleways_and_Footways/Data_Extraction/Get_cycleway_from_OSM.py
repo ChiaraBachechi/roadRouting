@@ -100,18 +100,22 @@ def createQueryCycleways(dist, lat, lon):
     """Create the query to fetch the data of interest"""
 
     query = f"""[out:json];(
-                way(around:{dist},{lat},{lon})[highway="cycleway"];
+                way(around:{dist},{lat},{lon})["highway"="cycleway"];
                 way(around:{dist},{lat},{lon})["highway"="residential"][bicycle!~"no"][bicycle!~"dismount"];
+				way(around:{dist},{lat},{lon})["highway"="track"][bicycle!~"no"][bicycle!~"dismount"];
                 way(around:{dist},{lat},{lon})["highway"="service"][bicycle!~"no"][bicycle!~"dismount"];
                 way(around:{dist},{lat},{lon})["highway"="primary"][bicycle!~"no"][bicycle!~"dismount"];
+                way(around:{dist},{lat},{lon})["highway"="primary_link"][bicycle!~"no"][bicycle!~"dismount"];
                 way(around:{dist},{lat},{lon})["highway"="secondary"][bicycle!~"no"][bicycle!~"dismount"];
+                way(around:{dist},{lat},{lon})["highway"="secondary_link"][bicycle!~"no"][bicycle!~"dismount"];
                 way(around:{dist},{lat},{lon})["highway"="tertiary"][bicycle!~"no"][bicycle!~"dismount"];
-                way(around:{dist},{lat},{lon})["highway"="living_street"][bicycle!~"no"][bicycle!~"dismount"];
+                way(around:{dist},{lat},{lon})["highway"="tertiary_link"][bicycle!~"no"][bicycle!~"dismount"];
+                way(around:{dist},{lat},{lon})["highway"="road"][bicycle!~"no"][bicycle!~"dismount"];
                 way(around:{dist},{lat},{lon})["highway"="unclassified"][bicycle!~"no"][bicycle!~"dismount"];
                 way(around:{dist},{lat},{lon})["highway"="living_street"][bicycle!~"no"][bicycle!~"dismount"];
                 way(around:{dist},{lat},{lon})["highway"="path"][bicycle!~"no"][bicycle!~"dismount"];
                 way(around:{dist},{lat},{lon})["highway"="padestrian"][bicycle!~"no"][bicycle!~"dismount"];
-                way(around:{dist},{lat},{lon})[cycleway][cycleway!~"no"];
+                way(around:{dist},{lat},{lon})["cycleway"][cycleway!~"no"];
                 );out geom;"""
     return query
 
