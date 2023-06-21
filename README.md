@@ -125,16 +125,16 @@ Routing between two points can be performed by running the following script. A m
 An example of how to use the script routing.py:
 
 ```` shell
-python routing.py -s 'La Baracchina' -d 'Michelangelo' -n neo4j://localhost:7687 -u neo4j -p passwd -x 44.645885 -y 10.9255707
+python routing.py -s 842320765 -d 27170660 -n neo4j://localhost:7687 -u neo4j -p passwd -f MAP.html
 ````
 The parameters passed:
 
-- _s_ name of the source point of interest
-- _d_ name of the destination point of interest
+- _s_ OSM ID of the source point of interest
+- _d_ OSM ID of the destination point of interest
 - _n_ address of the local Neo4j instance 
 - _u_ user of the local Neo4j instance
 - _p_ password of the local Neo4j instance
-- _x_ and _y_ latitude and longitude of the central point of the generated map
+- _f_ name of the file where to save the visualization of the path
 
 The program asks you to enter the modality for routing choosing between: **distance** (d), **hops** (h) or **traffic volume** (t).
 The routing based on distance will select the shortest path considering the distance. The routing based on hops will choose the path with the minimum number of hops.
