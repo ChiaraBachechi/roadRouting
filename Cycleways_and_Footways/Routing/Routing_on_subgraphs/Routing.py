@@ -4,13 +4,13 @@ import json
 import argparse
 import os
 import time
-import folium
+import folium as fo
 import osmnx as ox
 from shapely import wkt
 import pandas as pd
 import geopandas as gpd
-
-
+import numpy as np
+from ast import literal_eval
 """In this file we perform routing on projections using A*"""
 
 class App:
@@ -102,16 +102,16 @@ class App:
     @staticmethod
     def _update_cost(tx,beta):
         tx.run("""
-                MATCH(n1)-[r:BIKE_ROUTE]-(n2) with max(r.travel_time) as max_travel_time, min(r.travel_time) as min_travel_time 
-                MATCH(n3)-[r1:BIKE_ROUTE]-(n4) with max_travel_time, min_travel_time, r1 
-                set r1.cost = $beta *(r1.travel_time-min_travel_time)/(max_travel_time-min_travel_time) + (1-$beta2) *(r1.danger-1)/(20-1)
+                MATCH(n1)-[r:BIKE_ROUTE]-(n2) with max(r.travel_time) as max_travel_time,max(r.danger) as max_danger, min(r.travel_time) as min_travel_time, min(r.danger) as min_danger 
+                MATCH(n3)-[r1:BIKE_ROUTE]-(n4) with max_travel_time, min_travel_time,max_danger,min_danger, r1 
+                set r1.cost = $beta *(r1.travel_time-min_travel_time)/(max_travel_time-min_travel_time) + (1-$beta2) *(r1.danger-min_danger)/(max_danger-min_danger)
                 """,beta = beta, beta2 = beta)
 
         tx.run("""
-                MATCH(n1)-[r:FOOT_ROUTE]-(n2) with max(r.travel_time) as max_travel_time, min(r.travel_time) as min_travel_time 
-                MATCH(n3)-[r1:FOOT_ROUTE]-(n4) with max_travel_time, min_travel_time, r1 
-                set r1.cost = $beta *(r1.travel_time-min_travel_time)/(max_travel_time-min_travel_time) + (1-$beta2) *(r1.danger-1)/19
-                """,beta = beta, beta2 = beta)"
+                MATCH(n1)-[r:FOOT_ROUTE]-(n2) with max(r.travel_time) as max_travel_time,max(r.danger) as max_danger, min(r.travel_time) as min_travel_time, min(r.danger) as min_danger
+                MATCH(n3)-[r1:FOOT_ROUTE]-(n4) with max_travel_time, min_travel_time,max_danger,min_danger, r1 
+                set r1.cost = $beta *(r1.travel_time-min_travel_time)/(max_travel_time-min_travel_time) + (1-$beta2) *(r1.danger-min_danger)/(max_danger-min_danger)
+                """,beta = beta, beta2 = beta)
         return
 
     def get_import_folder_name(self):
@@ -246,7 +246,370 @@ class App:
         result = tx.run("""match (n {id: $start})-[r]->(m {id: $end}) return r.length,r.danger,r.speed
         """,start = start, end = end)
         return result.values()
+    
+    def generate_inter_community_graph(self):
+        """evaluate the best route between the source and the target
+        """
+        with self.driver.session() as session:
+            result = session.execute_write(self._generate_inter_community_graph)
+            return result
+    @staticmethod
+    def _generate_inter_community_graph(tx):
+        query = """
+        call gds.graph.project('community_graph', ['Community'], 
+                ['INTRA_COMMUNITY'], 
+                { relationshipProperties: ['cost']});"""
+        result = tx.run(query)
+        return result.values()
+        
+    def generate_inter_community_path(self,source,target):
+        """evaluate the best route between the source and the target
+        """
+        with self.driver.session() as session:
+            result = session.execute_write(self._generate_inter_community_path,source,target)
+            return result
+    @staticmethod
+    def _generate_inter_community_path(tx,source,target): 
+        #query = """
+        #match (bks:BikeNode{id:'%s'})
+        #match (bkt:BikeNode{id:'%s'})
+        #match (source:Community{id:bks.louvain})
+        #match (target:Community{id:bkt.louvain})
+        #with source as s, target as t
+        #match p = shortestPath((s)-[:INTRA_COMMUNITY*]->(t)) unwind relationships(p) as n with startNode(n).id as start_node,endNode(n).id as end_node
+        #match (bk:BikeNode{louvain:start_node,border_lmatch (bks:BikeNode{id:'%ouvain:True})-[r:BORDER_LOUVAIN_ROUTE]->(bk2:BikeNode{louvain:start_node,border_louvain:True})-[r2:BIKE_ROUTE]->(bk3:BikeNode{louvain:end_node,border_louvain:True})
+        #return bk.id,r.cost,r.path_cost,bk2.id,r2.cost,bk3.id,start_node,end_node"""%(source,target)
+        query = """
+        match (bks:BikeNode{id:'%s'})
+        match (bkt:BikeNode{id:'%s'})
+        match (source:Community{id:bks.louvain})
+        match (target:Community{id:bkt.louvain})
+        with source as s, target as t
+        CALL gds.shortestPath.dijkstra.stream('community_graph', {
+                                            sourceNode: s,
+                                            targetNode: t,
+                                            relationshipWeightProperty: 'cost'
+                                            })
+                                            YIELD index, sourceNode, targetNode, totalCost, nodeIds, path as p
+        unwind relationships(p) as n with startNode(n).id as start_node,endNode(n).id as end_node
+        match (bk:BikeNode{louvain:start_node,border_louvain:True})-[r:BORDER_LOUVAIN_ROUTE]->(bk2:BikeNode{louvain:start_node,border_louvain:True})-[r2:BIKE_ROUTE]->(bk3:BikeNode{louvain:end_node,border_louvain:True})
+        return bk.id,r.cost,r.path_cost,bk2.id,r2.cost,bk3.id,start_node,end_node"""%(source,target)
+        #print(query)
+        result = tx.run(query)
+        return result.values()
+        
+    def evaluate_path_metrics(self,pairs):
+        """evaluate path metrics
+        """
+        with self.driver.session() as session:
+            result = session.execute_write(self._evaluate_path_metrics,pairs)
+            return result
+    @staticmethod
+    def _evaluate_path_metrics(tx,pairs):
+        query = """unwind %s as pairs
+                match (n:BikeNode{id: pairs[0]})-[r:BIKE_ROUTE]->(m:BikeNode{id:pairs[1]})
+                with min(r.cost) as min_cost, pairs
+                match (n:BikeNode{id: pairs[0]})-[r:BIKE_ROUTE]->(m:BikeNode{id:pairs[1]})
+                where r.cost = min_cost
+                return sum(r.cost) as cost,avg(r.danger) as danger,sum(r.distance) as distance"""%(pairs)
+        result = tx.run(query)
+        return result.values()
+        
+    def count_crossings(self,pairs):
+        """evaluate path metrics
+        """
+        with self.driver.session() as session:
+            result = session.execute_write(self._count_crossings,pairs)
+            return result
+    @staticmethod
+    def _count_crossings(tx,pairs):
+        query = """unwind %s as pairs
+                match (n:BikeCrossing{id: pairs[0]})-[r:BIKE_ROUTE]->(m:BikeCrossing{id:pairs[1]})
+                return count(n)"""%(pairs)
+        result = tx.run(query)
+        return result.values()
+        
+    def count_communities(self,pairs):
+        """evaluate path metrics
+        """
+        with self.driver.session() as session:
+            result = session.execute_write(self._count_communities,pairs)
+            return result
+    @staticmethod
+    def _count_communities(tx,pairs):
+        query = """unwind %s as pairs
+                match (n:BikeNode{id: pairs[0]})-[r:BIKE_ROUTE]->(m:BikeNode{id:pairs[1]})
+                where n.louvain <> m.louvain
+                return count(r)"""%(pairs)
+        result = tx.run(query)
+        return result.values()
+        
+    def generate_louvain_community_graph(self, id_community):
+        """generate the graph projection for the given community"""
 
+        with self.driver.session() as session:
+            result = session.execute_write(self._generate_louvain_community_graph, id_community)
+            return result
+    @staticmethod
+    def _generate_louvain_community_graph(tx, id_community):
+        query ="""call gds.graph.project.cypher('subgraph_community_lp_""" + str(id_community) + """','MATCH (n:BikeNode {louvain:"""
+        query = query + str(id_community) + """}) RETURN id(n) AS id','MATCH (n:BikeNode{louvain:"""+ str(id_community) 
+        query = query + """})-[r:BIKE_ROUTE]->(m:BikeNode{louvain: """ + str(id_community) + """}) RETURN id(n) AS source, id(m) AS target, r.travel_time as travel_time, r.danger as danger, r.cost as cost')
+                        YIELD
+                          graphName AS graph, nodeQuery, nodeCount AS nodes, relationshipQuery, relationshipCount AS rels"""
+        result = tx.run(query)
+        return result.values()
+        
+    def routing_source_targets(self,source,targets):
+        """evaluate the best route between the source and the target
+        """
+        with self.driver.session() as session:
+            result = session.execute_write(self._routing_source_targets,source,targets)
+            return result
+    @staticmethod
+    def _routing_source_targets(tx,source,targets):
+        query = """
+        match (s:BikeNode {id: '%s'})
+        unwind %s as t_id
+        match (t:BikeNode {id: t_id}) 
+        with s,t
+        CALL gds.shortestPath.dijkstra.stream('subgraph_community_lp_' + toString(s.louvain), {
+                                            sourceNode: s,
+                                            targetNode: t,
+                                            relationshipWeightProperty: 'cost'
+                                            })
+                                            YIELD index, sourceNode, targetNode, totalCost, nodeIds
+        with  gds.util.asNode(sourceNode).id as sourceNode,gds.util.asNode(targetNode).id as targetNode,[nodeId IN nodeIds | gds.util.asNode(nodeId).id] AS nodes_path, totalCost as weight
+        return sourceNode,targetNode,nodes_path,weight"""%(source,targets)
+        result = tx.run(query)
+        return result.values()
+        
+    def routing_sources_target(self,sources,target):
+        """evaluate the best route between the source and the target
+        """
+        with self.driver.session() as session:
+            result = session.execute_write(self._routing_sources_target,sources,target)
+            return result
+    @staticmethod
+    def _routing_sources_target(tx,sources,target):
+        query = """
+        match (t:BikeNode {id: '%s'})
+        unwind %s as s_id
+        match (s:BikeNode {id: s_id}) 
+        with s,t
+        CALL gds.shortestPath.dijkstra.stream('subgraph_community_lp_' + toString(s.louvain), {
+                                            sourceNode: s,
+                                            targetNode: t,
+                                            relationshipWeightProperty: 'cost'
+                                            })
+                                            YIELD index, sourceNode, targetNode, totalCost, nodeIds
+        with  gds.util.asNode(sourceNode).id as sourceNode,gds.util.asNode(targetNode).id as targetNode,[nodeId IN nodeIds | gds.util.asNode(nodeId).id] AS nodes_path, totalCost as weight
+        return sourceNode,targetNode,nodes_path,weight"""%(target, sources)
+        #print(query)
+        result = tx.run(query)
+        return result.values()
+        
+    def get_coordinates(self,final_path):
+        """evaluate the best route between the source and the target
+        """
+        with self.driver.session() as session:
+            result = session.execute_write(self._get_coordinates,final_path)
+            return result
+    @staticmethod
+    def _get_coordinates(tx,final_path): 
+        query = """
+        unwind %s as p
+        match (n:BikeNode{id: p}) return collect([n.lat,n.lon])"""%(final_path)
+        #print(query)
+        result = tx.run(query)
+        return result.values()
+        
+    def drop_all_projections(self):
+        with self.driver.session() as session:
+            result = session.execute_write(self._drop_all_projections)
+            return result
+    @staticmethod    
+    def _drop_all_projections(tx):
+        result = tx.run("""CALL gds.graph.list() YIELD graphName
+                    CALL gds.graph.drop(graphName)
+                    YIELD database
+                    RETURN 'dropped ' + graphName""")
+        return result.values()
+
+    def routing_old_style(self,source,target):
+        """evaluate the best route between the source and the target
+        """
+        with self.driver.session() as session:
+            result = session.execute_write(self._routing_old_style,source,target)
+            return result
+    @staticmethod
+    def _routing_old_style(tx,source,target):
+        tx.run("""call gds.graph.project('subgraph_routing', ['BikeJunction','BikeCrossing'], 
+                ['BIKE_ROUTE'], 
+                {nodeProperties: ['lat', 'lon'], relationshipProperties: ['cost']});
+            """)
+        query = """
+        match (s:BikeNode {id: '%s'})
+        match (t:BikeNode {id: '%s'})
+        CALL gds.shortestPath.dijkstra.stream('subgraph_routing', {
+                                            sourceNode: s,
+                                            targetNode: t,
+                                            relationshipWeightProperty: 'cost'
+                                            })
+                                            YIELD index, sourceNode, targetNode, totalCost, nodeIds, path
+        with  [nodeId IN nodeIds | gds.util.asNode(nodeId).id] AS nodes_path, totalCost as weight,path as p
+        unwind relationships(p) as n with startNode(n).id as start_node,endNode(n).id as end_node,nodes_path,weight
+        match (bk:BikeNode{id:start_node})-[r:BIKE_ROUTE]->(bk2:BikeNode{id:end_node})
+        return nodes_path,weight, sum(r.danger) as total_danger, sum(r.distance) as total_distance"""%(source,target)
+        result = tx.run(query)
+        tx.run("""call gds.graph.drop('subgraph_routing')""")
+        return result.values()[0]
+        
+        
+        
+def routing_with_communities(greeter,source,target,boolMap=False,file=''):
+    greeter.generate_inter_community_graph()
+    #find all the shortest path between communities and then find all the possible border nodes path
+    start_time = time.time()
+    result = greeter.generate_inter_community_path(source,target)
+    percorso = pd.DataFrame(result, columns = ['bk.id', 'r.cost', 'r.path_cost', 'bk2.id', 'r2.cost', 'bk3.id',
+       'start_node', 'end_node'])
+    percorso['r.path_cost'] = percorso['r.path_cost'].apply(str)
+    #get the sequence of communities
+    sequence = percorso['start_node'].unique()
+    sequence = np.append(sequence,percorso['end_node'].iloc[-1])
+    #find all the possible paths and their costs
+    choice=pd.DataFrame()
+    for i in range(0,len(sequence)-1):
+        if i==0:
+            if len(sequence)>2:
+                choice = pd.merge(percorso[(percorso['start_node']==sequence[i]) & (percorso['end_node']==sequence[i+1])], percorso[(percorso['start_node']==sequence[i+1]) & (percorso['end_node']==sequence[i+2])], 
+                                  left_on=  ['bk3.id'],
+                           right_on= ['bk.id'], 
+                           how = 'outer',
+                            suffixes = ['_' + str(i),'_' + str(i+1)]).dropna()
+            else:
+                choice = percorso[(percorso['start_node']==sequence[i])].rename(
+                                  columns ={'bk.id': 'bk.id_'+ str(i),'r.cost':'r.cost_'+ str(i),'r.path_cost':'r.path_cost_'+ str(i),'bk2.id':'bk2.id_'+ str(i),'r2.cost':'r2.cost_'+ str(i),'bk3.id':'bk3.id_'+ str(i),'start_node':'start_node_'+ str(i),'end_node':'end_node_'+ str(i)})
+        elif i == len(sequence)-2:
+            choice = pd.merge(choice,
+                              percorso[(percorso['start_node']==sequence[i])].rename(
+                                  columns ={'bk.id': 'bk.id_'+ str(i),'r.cost':'r.cost_'+ str(i),'r.path_cost':'r.path_cost_'+ str(i),'bk2.id':'bk2.id_'+ str(i),'r2.cost':'r2.cost_'+ str(i),'bk3.id':'bk3.id_'+ str(i),'start_node':'start_node_'+ str(i),'end_node':'end_node_'+ str(i)}),
+                              on = ['bk.id_' + str(i),'r.cost_' + str(i),'r.path_cost_' + str(i),'bk2.id_' + str(i),'r2.cost_' + str(i),'bk3.id_' + str(i),'start_node_' + str(i),'end_node_' + str(i)])
+        else:
+            choice = pd.merge(choice,
+                            pd.merge(percorso[percorso['start_node']==sequence[i]], 
+                                         percorso[percorso['start_node']==sequence[i+1]],
+                                         left_on=  ['bk3.id'],right_on= ['bk.id'],
+                                         how = 'outer',
+                                    suffixes = ['_' + str(i),'_' + str(i+1)]).dropna(),
+                              on = ['bk.id_' + str(i),'r.cost_' + str(i),'r.path_cost_' + str(i),'bk2.id_' + str(i),'r2.cost_' + str(i),'bk3.id_' + str(i),'start_node_' + str(i),'end_node_' + str(i)]
+                             )
+            choice['min_cost'] = choice['r.cost_' + str(i)] + choice['r2.cost_' + str(i)] + choice['r.cost_' + str(i+1)] + + choice['r2.cost_' + str(i+1)]
+            choice = choice.loc[choice.groupby(by=['bk.id_' + str(i),'bk3.id_' + str(i+1)]).min_cost.idxmin()]
+            choice = choice.drop(['min_cost'], axis=1)
+    #get the total cost of the path between the communities
+    choice['total_cost'] = 0
+    for i in range(0,len(sequence)-1):
+        if i != 0:
+            choice['total_cost'] = choice['r.cost_' + str(i)] + choice['r2.cost_' + str(i)] + choice['total_cost']
+        else:
+            choice['total_cost'] = choice['r2.cost_' + str(i)] + choice['total_cost']
+    #generate the graph of the source community
+    greeter.generate_louvain_community_graph(sequence[0])   
+    #generate all the possible path between the soruce node and the border nodes that point to the next community
+    str_target = '[' + ",".join('"'  + str(x) + '"' for x in choice['bk2.id_0'].unique()) + ']'
+    df_source = pd.DataFrame(greeter.routing_source_targets(source,str_target), columns = ['source', 'border', 'r.path_cost_s', 'cost'])
+    df_source['r.path_cost_s'] = df_source['r.path_cost_s'].apply(str)
+    choice = pd.merge(df_source,choice,left_on=  ['border'],right_on= ['bk2.id_0'],how='outer')
+    #generate the graph of the target community
+    greeter.generate_louvain_community_graph(sequence[-1])
+    #generate all the possible path between the target node and the border nodes that comes from the previous community
+    str_source = '[' + ",".join('"'  + str(x) + '"' for x in choice['bk3.id_'+ str(len(sequence)-2)].unique()) + ']'
+    df_target = pd.DataFrame(greeter.routing_sources_target(str_source,target), columns = ['border', 'target', 'r.path_cost_t', 'cost_t']) 
+    choice = pd.merge(df_target,choice,left_on=  ['border'],right_on= ['bk3.id_'+ str(len(sequence)-2)],how='outer',
+                      suffixes = ['_target',''])
+    #find the total cost of the path
+    choice['total_cost'] = choice['total_cost'] + choice['cost'] + choice['cost_t']
+    path = []
+    for x in literal_eval(choice.sort_values(by=['total_cost']).iloc[0,:]['r.path_cost_s']):
+            path.append(x)
+    for i in range(1,len(sequence)-1):
+        for x in literal_eval(choice.sort_values(by=['total_cost']).iloc[0,:]['r.path_cost_' + str(i)]):
+            if x != path[-1:]:
+                path.append(x)
+        if i == len(sequence)-2:
+            path.append(choice.sort_values(by=['total_cost']).iloc[0,:]['bk3.id_'+str(i)].replace('"',''))
+    for x in choice.sort_values(by=['total_cost']).iloc[0,:]['r.path_cost_t']:
+        if x != path[-1:]:
+            path.append(x)
+    dic= {}
+    dic['exec_time']=time.time() - start_time
+    dic['hops']=len(path)
+    #visualization of the path
+    if (boolMap):
+        coordinates = greeter.get_coordinates(final_path = str(path))
+        k = fo.Map(location=[coordinates[0][0][0][0], coordinates[0][0][0][1]], zoom_start=13)
+        if len(coordinates[0][0]) == 0:
+                print('\nNo result for query')
+        else:
+            fo.PolyLine(coordinates[0][0], color="red", weight=5).add_to(k)
+            k.save(file +'.html')
+    #evaluation of the path
+    pairs = []
+    for i in range(0,len(path)-1):
+        pairs.append([path[i],path[i+1]])
+    ev = greeter.evaluate_path_metrics(pairs = str(pairs))
+    dic['source'] = source
+    dic['target'] = target
+    dic['cost'] = ev[0][0]
+    dic['danger']= ev[0][1]
+    dic['distance']= ev[0][2]
+    dic['#crossings']= greeter.count_crossings(pairs = str(pairs))[0][0]
+    dic['#communities']= greeter.count_communities(pairs = str(pairs))[0][0]
+    #dic['pairs'] = pairs
+    greeter.drop_all_projections()
+    return dic
+
+def routing_old_way(greeter,source,target,boolMap=False,file=''):
+    start_time = time.time()
+    result = greeter.routing_old_style(source,target)
+    path = result[0]
+    cost = result[1]
+    final_path = []
+
+    for p in path:
+        if final_path:
+            if str(p) != final_path[-1:][0]:
+                final_path.append(str(p))
+        else:
+            final_path.append(str(p))
+    dic= {}
+    dic['exec_time']=time.time() - start_time
+    dic['hops']=len(final_path)
+    if (boolMap):
+        #visualization of the path
+        coordinates = greeter.get_coordinates(final_path = str(final_path))
+        m = fo.Map(location=[coordinates[0][0][0][0], coordinates[0][0][0][1]], zoom_start=13)
+        if len(coordinates[0][0]) == 0:
+                print('\nNo result for query')
+        else:
+            fo.PolyLine(coordinates[0][0], color="green", weight=5).add_to(m)
+            m.save(file + '.html')
+    #evaluation of the path
+    pairs = []
+    for i in range(0,len(final_path)-1):
+        pairs.append([final_path[i],final_path[i+1]])
+    ev = greeter.evaluate_path_metrics(pairs = str(pairs))
+    dic['source'] = source
+    dic['target'] = target
+    dic['cost'] = ev[0][0]
+    dic['danger']= ev[0][1]
+    dic['distance']= ev[0][2]
+    dic['#crossings']= greeter.count_crossings(pairs = str(pairs))[0][0]
+    dic['#communities']= greeter.count_communities(pairs = str(pairs))[0][0]
+    greeter.drop_all_projections()
+    return dic
 
 def read_file(path):
     """Read the file at the specified path"""
@@ -374,13 +737,13 @@ def add_options():
                         help="""Insert the password of the local neo4j instance.""",
                         required=True)
     parser.add_argument('--mode', '-m', dest='mode', type=str,
-                        help="""Choose the modality of routing : cycleways or footways.""",
+                        help="""Choose the modality of routing : cycleways, footways, community or old.""",
                         required=True)
     parser.add_argument('--alg', '-a', dest='alg', type=str,
                         help="""Choose the modality of routing : astar (a) or dijkstra (d).""",
                         required=False, default = 'd')
     parser.add_argument('--weight', '-w', dest='weight', type=str,help="""Insert the weight to use in order to perform the routing : travel_time, cost or both.""",
-                        required=True)
+                        required=False, default = 'both')
     parser.add_argument('--mapName', '-mn', dest='mapName', type=str,
                         help="""Insert the name of the file containing the map with the computed path.""",
                         required=True)
@@ -404,12 +767,30 @@ def main(args=None):
     foot = False
     if options.mode == 'cycleways':
         graph_projection = "bike_routes"
-    else:
+    elif options.mode == 'footway':
         graph_projection = "foot_routes"
         foot = True
-    
+    elif options.mode == 'community':
+        result = routing_with_communities(greeter,options.source,options.dest,True,options.mapName)
+        print("execution time:" + str(result['exec_time']))
+        print("number of hops:" + str(result['hops']))
+        print("total cost:" + str(result['cost']))
+        print("average danger:" + str(result['danger']))
+        print("total distance:" + str(result['distance']))
+        print("number of crossings:" + str(result['#crossings']))
+        print("number of communities:" + str(result['#communities']))
+        return 0
+    elif options.mode == 'old':
+        result = routing_old_way(greeter,options.source,options.dest,True,options.mapName)
+        print("execution time:" + str(result['exec_time']))
+        print("number of hops:" + str(result['hops']))
+        print("total cost:" + str(result['cost']))
+        print("average danger:" + str(result['danger']))
+        print("total distance:" + str(result['distance']))
+        print("number of crossings:" + str(result['#crossings']))
+        print("number of communities:" + str(result['#communities']))
+        return 0
 
-    print("Loading cycleways and footways dataframes : done")
     if options.lat == '':
         if options.source != '':
             result = greeter.get_the_nearest_junction_to_POI(options.source,foot)

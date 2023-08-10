@@ -15,10 +15,10 @@ class App:
     def close(self):
         self.driver.close()
 
-    def set_relations_weights(self, beta = 0.5):
+    def set_relations_weights(self):
         """Set weights on subgraphs' relationships"""
         with self.driver.session() as session:
-            result = session.write_transaction(self._set_relations_weights, beta)
+            result = session.write_transaction(self._set_relations_weights)
             return result
 
     @staticmethod
@@ -37,15 +37,15 @@ class App:
                 match (bl:BicycleLane)-[:CONTAINS]->(b:BikeJunction)-[r:BIKE_ROUTE]-(b2:BikeJunction)<-[:CONTAINS]-(bl2:BicycleLane) 
                 match (bl)-[:CONTINUE_ON_FOOTWAY]->(f:Footway)-[:CONTINUE_ON_LANE]->(bl2)
                 set r.danger = round(toFloat(bl.danger+f.danger)/2.0,0,"UP");""")
-        tx.run("""
-                match (b:BikeJunction)-[r:BIKE_ROUTE]-(b2:BikeJunction) 
-                match (b)<-[:CONTAINS]-(bl:BicycleLane)-[:CONTINUE_ON_LANE_BY_CROSSING_ROAD]-(bl2:BicycleLane)-[:CONTAINS]->(b2)
-                where bl.osm_id <> bl2.osm_id
-                set r.danger = round(toFloat(bl.danger + bl2.danger)/2,0,'UP') + 15 """)
-        tx.run("""match (b:BikeCrossing)-[r:BIKE_ROUTE]-() set r.danger = 20""")
-        tx.run("""match (b:BikeRoad)-[r:BIKE_ROUTE]-() set r.danger = 20""")
+        #tx.run("""
+        #       match (b:BikeJunction)-[r:BIKE_ROUTE]-(b2:BikeJunction) 
+        #       match (b)<-[:CONTAINS]-(bl:BicycleLane)-[:CONTINUE_ON_LANE_BY_CROSSING_ROAD]-(bl2:BicycleLane)-[:CONTAINS]->(b2)
+        #        where bl.osm_id <> bl2.osm_id
+        #        set r.danger = round(toFloat(bl.danger + bl2.danger)/2,0,'UP') + 15 """)
+        tx.run("""match (b:BikeCrossing)-[r:BIKE_ROUTE]-(:BikeCrossing) set r.danger = 20""")
+        #tx.run("""match (b:BikeRoad)-[r:BIKE_ROUTE]-() set r.danger = 20""")
         tx.run("""MATCH (bl:BicycleLane)-[:CONTAINS]->(bk:BikeJunction)-[r:BIKE_ROUTE]-(bk1:BikeJunction)<-[:CONTAINS]-(bl1:BicycleLane)
-                where not exists(r.danger) set r.danger = round((bl.danger + bl1.danger)/2,0,'UP') remove r.daner""")
+                where not exists(r.danger) set r.danger = round((bl.danger + bl1.danger)/2,0,'UP')""")
         """---------------------------Footways-------------------------------"""
         tx.run("""match (f:Footway) 
                   where not  f.highway in ['path','pedestrian','footway','track','steps'] 
@@ -65,25 +65,24 @@ class App:
                 match (b)<-[:CONTAINS]-(bl:Footway)-[:CONTINUE_ON_FOOTWAY]-(bl2:Footway)-[:CONTAINS]->(b2)
                 where bl.osm_id <> bl2.osm_id
                 set r.danger = round(toFloat(bl.danger + bl2.danger)/2,0,'UP')""")
-        tx.run("""
-                match (b:FootJunction)-[r:FOOT_ROUTE]-(b2:FootJunction) 
-                match (b)<-[:CONTAINS]-(bl:Footway)-[:CONTINUE_ON_FOOTWAY_BY_CROSSING_ROAD]-(bl2:Footway)-[:CONTAINS]->(b2)
-                where bl.osm_id <> bl2.osm_id
-                set r.danger = round(toFloat(bl.danger + bl2.danger)/2,0,'UP') + 15 """)
-        tx.run("""
-                match (b:FootJunction)-[r:FOOT_ROUTE]->(b2:BikeJunction) 
-                match (b)<-[:CONTAINS]-(bl:Footway)-[:CONTINUE_ON_CLOSE_LANE_BY_CROSSING_ROAD]->(bl2:BicycleLane)-[:CONTAINS]->(b2)
-                where bl.osm_id <> bl2.osm_id
-                set r.danger = 20 """)
-        tx.run("""match (b:FootJunction)<-[r:FOOT_ROUTE]-(b2:BikeJunction) 
-                match (b)<-[:CONTAINS]-(bl:Footway)<-[:CONTINUE_ON_CLOSE_FOOTWAY_BY_CROSSING_ROAD]-(bl2:BicycleLane)-[:CONTAINS]->(b2)
-                where bl.osm_id <> bl2.osm_id
-                set r.danger = 20 """)
-        tx.run("""match (b:FootCrossing)-[r:FOOT_ROUTE]-() set r.danger = 20""")
-        tx.run("""match (b:FootRoad)-[r:FOOT_ROUTE]-() set r.danger = 20""")
-        tx.run("""MATCH(bl:Footway)-[c:CONTAINS]->(bk:FootJunction)-[r:FOOT_ROUTE]-(bk1:FootJunction)<-[c1:CONTAINS]-(bl1:Footway)
-                  where not exists(r.danger) 
-                  set r.danger = round(toFloat(bl1.danger+bl.danger)/2.0,0,'UP')""")
+        #tx.run("""
+        #        match (b:FootJunction)-[r:FOOT_ROUTE]-(b2:FootJunction) 
+        #        match (b)<-[:CONTAINS]-(bl:Footway)-[:CONTINUE_ON_FOOTWAY_BY_CROSSING_ROAD]-(bl2:Footway)-[:CONTAINS]->(b2)
+        #        where bl.osm_id <> bl2.osm_id
+        #        set r.danger = round(toFloat(bl.danger + bl2.danger)/2,0,'UP') + 15 """)
+		"""relazioni tra footway e bicyclelane in termini di sicurezza da rivedere"""
+        #tx.run("""
+        #        match (b:FootJunction)-[r:FOOT_ROUTE]->(b2:BikeJunction) 
+        #        set r.danger = 3 """)
+        #tx.run("""match (b:FootJunction)<-[r:FOOT_ROUTE]-(b2:BikeJunction) 
+        #        match (b)<-[:CONTAINS]-(bl:Footway)<-[:CONTINUE_ON_CLOSE_FOOTWAY_BY_CROSSING_ROAD]-(bl2:BicycleLane)-[:CONTAINS]->(b2)
+        #        where bl.osm_id <> bl2.osm_id
+        #        set r.danger = 20 """)
+        #tx.run("""match (b:FootCrossing)-[r:FOOT_ROUTE]-() set r.danger = 20""")
+        #tx.run("""match (b:FootRoad)-[r:FOOT_ROUTE]-() set r.danger = 20""")
+        #tx.run("""MATCH(bl:Footway)-[c:CONTAINS]->(bk:FootJunction)-[r:FOOT_ROUTE]-(bk1:FootJunction)<-[c1:CONTAINS]-(bl1:Footway)
+        #          where not exists(r.danger) 
+        #          set r.danger = round(toFloat(bl1.danger+bl.danger)/2.0,0,'UP')""")
 
         tx.run("""
                 match(n)-[r:BIKE_ROUTE]-(n1) set r.speed = 15;

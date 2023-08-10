@@ -79,7 +79,7 @@ def add_options():
 
 def classification(row):
     if(row['highway'] == 'track' or row['highway'] == 'path' or row['highway'] == 'footway' or row['highway'] == 'steps' or row['highway'] == 'pedestrian' ):
-        return 'fisicamente protetto'
+        return 'lontano dal traffico'
     if(row['highway'] == 'cycleway' or row['cycleway'] == 'track'):
         return 'fisicamente protetto'
     if(row['cycleway'] == 'lane'):
